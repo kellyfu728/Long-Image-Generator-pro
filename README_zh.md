@@ -43,17 +43,25 @@
 
 截图中的示例文本为作者原创同人文片段，仅用于展示编辑器排版及长图导出效果。
 
-```
-<p align="center">
-    <img src="images/editor_zh.png" width="800">
-</p>
+
+### 📝 编辑器界面
 
 <p align="center">
-    <img src="images/export_zh.png" width="800">
+    <img src="image/editor_zh.png" width="900">
 </p>
 
+长图生成器的编辑器界面，可进行富文本编辑与排版。
 
-```
+---
+
+### 🖼 导出效果
+
+<p align="center">
+    <img src="image/export_zh.png" width="900">
+</p>
+
+由编辑器导出的长图效果示例。
+
 
 ---
 
