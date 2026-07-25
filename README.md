@@ -8,6 +8,12 @@ No installation required. Simply open the HTML file in your browser and start ed
 
 ---
 
+## About
+
+Long Image Generator Pro is a personal side project inspired by my own need for sharing long-form writing, especially fanfiction and study notes. It focuses on simple editing, flexible formatting, and exporting clean long images directly from the browser.
+
+---
+
 ## 📌 Notice
 
 This project is a personal project created for learning, communication, portfolio display, and archival purposes.
