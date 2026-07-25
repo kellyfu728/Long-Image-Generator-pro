@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>长图生成器 Pro · Word风格</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: #f0f4f8;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            padding: 24px;
+            display: flex;
+            justify-content: center;
+        }
+        .app {
+            max-width: 1200px;
+            width: 100%;
+            background: white;
+            border-radius: 32px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.08);
+            padding: 32px;
+        }
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #eef2f6;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        h1 {
+            font-size: 26px;
+            font-weight: 700;
+            color: #0a0a0a;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        h1 small { font-size: 15px; font-weight: 400; color: #6b7280; }
+        .lang-toggle {
+            display: flex;
+            gap: 4px;
+            background: #f1f4f9;
+            border-radius: 40px;
+            padding: 4px;
+            border: 1px solid #e2e8f0;
+        }
+        .lang-btn {
+            padding: 6px 18px;
+            border: none;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+            background: transparent;
+            color: #64748b;
+        }
+        .lang-btn.active { background: #0f172a; color: white; }
+        .lang-btn:hover:not(.active) { background: #e2e8f0; }
+
+        .message-bar {
+            padding: 8px 16px;
+            margin-bottom: 12px;
+            border-radius: 12px;
+            font-size: 14px;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            background: #f1f5f9;
+            color: #475569;
+            transition: all 0.2s;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .message-bar.error {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .message-bar.success {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+        .message-bar .hint-tip {
+            font-size: 12px;
+            color: #94a3b8;
+            margin-left: auto;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 12px;
+            background: #f8fafc;
+            padding: 12px 16px;
+            border-radius: 16px;
+            margin-bottom: 12px;
+            border: 1px solid #e5e9f0;
+            align-items: center;
+        }
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 6px 10px;
+            flex-wrap: wrap;
+            border-right: 1px solid #e2e8f0;
+            padding-right: 12px;
+        }
+        .toolbar-group:last-child { border-right: none; }
+        .toolbar-group label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .toolbar-group input[type="number"] {
+            width: 64px;
+            padding: 4px 8px;
+            border: 1px solid #d1d9e6;
+            border-radius: 30px;
+            font-size: 13px;
+            background: white;
+        }
+        .toolbar-group input[type="number"]:focus {
+            outline: 2px solid #3b82f6;
+            border-color: transparent;
+        }
+        .toolbar-group input[type="color"] {
+            width: 30px;
+            height: 30px;
+            padding: 2px;
+            border: 2px solid #d1d9e6;
+            border-radius: 50%;
+            cursor: pointer;
+            background: white;
+        }
+        .toolbar-group input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        .toolbar-group input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
+        .file-label {
+            background: white;
+            border: 1px solid #d1d9e6;
+            padding: 4px 14px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .file-label:hover { background: #f1f5f9; border-color: #94a3b8; }
+        .file-label input[type="file"] { display: none; }
+        .btn {
+            padding: 5px 16px;
+            border-radius: 30px;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.15s;
+            border: none;
+            background: transparent;
+            color: #1e293b;
+        }
+        .btn:hover { background: #e2e8f0; }
+        .btn-primary { background: #0f172a; color: white; }
+        .btn-primary:hover { background: #1e293b; }
+        .btn-outline { border: 1px solid #d1d9e6; }
+        .btn-outline:hover { background: #f1f5f9; }
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .btn-icon:hover { background: #e2e8f0; border-color: #cbd5e1; }
+
+        .style-hint {
+            font-size: 12px;
+            color: #94a3b8;
+            padding: 4px 0;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .editor {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+        }
+        .editor-left {
+            flex: 1 1 44%;
+            min-width: 280px;
+        }
+        .editor-right {
+            flex: 1 1 44%;
+            min-width: 300px;
+            background: #fafcff;
+            border-radius: 20px;
+            padding: 4px;
+            border: 1px solid #e5e9f0;
+        }
+        .panel-label {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 12px 12px 12px;
+            font-weight: 600;
+            color: #475569;
+            font-size: 13px;
+        }
+        #richEditor {
+            width: 100%;
+            height: 400px;
+            padding: 16px 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            overflow-y: auto;
+            background: white;
+            font-size: 16px;
+            line-height: 1.8;
+            outline: none;
+            color: #0f172a;
+            min-height: 300px;
+        }
+        #richEditor:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        #richEditor p { margin: 0 0 0.5em 0; }
+        #richEditor * { max-width: 100%; word-break: break-word; }
+        #richEditor ul, #poster ul {
+            list-style-type: disc;
+            padding-left: 28px;
+            margin-left: 4px;
+        }
+        #richEditor ol, #poster ol {
+            padding-left: 32px;
+            margin-left: 4px;
+        }
+        #richEditor ul.dash, #poster ul.dash {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+        #richEditor ul.dash li::before, #poster ul.dash li::before {
+            content: "- ";
+            font-weight: bold;
+        }
+        .preview-box {
+            background: transparent;
+            border-radius: 16px;
+            padding: 6px;
+        }
+        #poster {
+            width: 100%;
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 24px 28px;
+            min-height: 200px;
+            max-height: 520px;
+            overflow-y: auto;
+            box-shadow: inset 0 0 0 1px #eef2f6;
+            font-size: 16px;
+            line-height: 1.8;
+            word-wrap: break-word;
+            transition: background 0.2s;
+        }
+        #poster p { margin: 0 0 0.5em 0; }
+        #poster ul, #poster ol {
+            padding-left: 32px;
+            margin: 0.5em 0;
+        }
+        #poster ul { list-style-type: disc; }
+        #poster ul.dash {
+            list-style-type: none;
+            padding-left: 20px;
+        }
+        #poster ul.dash li::before {
+            content: "- ";
+            font-weight: bold;
+        }
+        .style-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px 24px;
+            margin-top: 16px;
+            padding: 14px 20px;
+            background: #f8fafc;
+            border-radius: 60px;
+            align-items: center;
+            border: 1px solid #eef2f6;
+        }
+        .style-controls label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            color: #1e293b;
+        }
+        .style-controls select,
+        .style-controls input[type="number"] {
+            padding: 5px 12px;
+            border-radius: 30px;
+            border: 1px solid #d1d9e6;
+            background: white;
+        }
+        .style-controls input[type="color"] {
+            width: 36px;
+            height: 36px;
+            padding: 2px;
+            border: 2px solid #d1d9e6;
+            border-radius: 50%;
+            cursor: pointer;
+            background: white;
+        }
+        .style-controls input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        .style-controls input[type="color"]::-webkit-color-swatch { border: none; border-radius: 50%; }
+        .badge {
+            background: #dbeafe;
+            color: #1e4b8a;
+            padding: 2px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+        }
+        .bg-preset-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .bg-preset-btn {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: 2px solid #d1d9e6;
+            cursor: pointer;
+            transition: 0.15s;
+            padding: 0;
+        }
+        .bg-preset-btn:hover { transform: scale(1.1); border-color: #0f172a; }
+        .bg-preset-btn.active { border-color: #0f172a; border-width: 3px; }
+        [data-lang="en"] .lang-zh { display: none; }
+        [data-lang="zh"] .lang-en { display: none; }
+        .tooltip { position: relative; }
+        .tooltip:hover::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e293b;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            pointer-events: none;
+        }
+        @media (max-width: 700px) {
+            .app { padding: 16px; }
+            .toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
+            .toolbar-group { border-right: none; padding-right: 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+            .toolbar-group:last-child { border-bottom: none; }
+            .style-controls { flex-direction: column; align-items: stretch; border-radius: 20px; }
+            .header-row { flex-direction: column; align-items: stretch; }
+            .message-bar { flex-direction: column; align-items: flex-start; }
+            .message-bar .hint-tip { margin-left: 0; }
+        }
+    </style>
+</head>
+<body data-lang="zh">
+    <div class="app">
+        <div class="header-row">
+            <h1>
+                <span class="lang-zh">📄 长图生成器 Pro</span>
+                <span class="lang-en">📄 Text-to-Image Pro</span>
+                <small><span class="lang-zh">Word风格 · 排版 · 长图导出</span><span class="lang-en">Word-style · Layout · Export</span></small>
+            </h1>
+            <div class="lang-toggle">
+                <button class="lang-btn active" data-lang="zh">中文</button>
+                <button class="lang-btn" data-lang="en">English</button>
+            </div>
+        </div>
+
+        <div id="messageBar" class="message-bar">
+            <span class="lang-zh">💡 选中文字后使用工具栏调整样式</span>
+            <span class="lang-en">💡 Select text and use the toolbar to apply styles</span>
+            <span class="hint-tip">
+                <span class="lang-zh">⬇️ 下方还有字体/字号/行距/段落间距/底色设置</span>
+                <span class="lang-en">⬇️ More style options below: Font / Size / Line H. / Para Gap / BG</span>
+            </span>
+        </div>
+
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <label><span class="lang-zh">📏 高度</span><span class="lang-en">📏 Height</span> <input type="number" id="heightInput" value="1200" min="300" max="5000"></label>
+            </div>
+            <div class="toolbar-group">
+                <label class="file-label">📂 <span class="lang-zh">导入</span><span class="lang-en">Import</span>
+                    <input type="file" id="fileUpload" accept=".txt,.docx,.doc,.pdf">
+                </label>
+            </div>
+            <div class="toolbar-group">
+                <button class="btn btn-icon tooltip" data-tip-zh="左对齐" data-tip-en="Align Left" onclick="execCmd('justifyLeft')">⬅</button>
+                <button class="btn btn-icon tooltip" data-tip-zh="居中" data-tip-en="Center" onclick="execCmd('justifyCenter')">↔</button>
+                <button class="btn btn-icon tooltip" data-tip-zh="右对齐" data-tip-en="Align Right" onclick="execCmd('justifyRight')">➡</button>
+                <button class="btn btn-icon tooltip" data-tip-zh="两端对齐" data-tip-en="Justify" onclick="execCmd('justifyFull')">☰</button>
+                <span style="color:#94a3b8;font-size:12px;margin-left:4px;" class="lang-zh">对齐</span>
+                <span style="color:#94a3b8;font-size:12px;margin-left:4px;" class="lang-en">Align</span>
+            </div>
+            <div class="toolbar-group">
+                <button class="btn btn-icon tooltip" data-tip-zh="加粗" data-tip-en="Bold" onclick="execCmd('bold')"><b>B</b></button>
+                <button class="btn btn-icon tooltip" data-tip-zh="斜体" data-tip-en="Italic" onclick="execCmd('italic')"><i>I</i></button>
+                <button class="btn btn-icon tooltip" data-tip-zh="下划线" data-tip-en="Underline" onclick="execCmd('underline')"><u>U</u></button>
+                <button class="btn btn-icon tooltip" data-tip-zh="删除线" data-tip-en="Strikethrough" onclick="execCmd('strikeThrough')"><s>S</s></button>
+            </div>
+            <div class="toolbar-group">
+                <label><span class="lang-zh">🎨 文字颜色</span><span class="lang-en">🎨 Text Color</span>
+                    <input type="color" id="textColorPicker" value="#000000" title="文字颜色" onchange="applyTextColor()">
+                </label>
+            </div>
+            <div class="toolbar-group">
+                <button class="btn btn-icon tooltip" data-tip-zh="项目符号 (•)" data-tip-en="Bullet (•)" onclick="execCmd('insertUnorderedList')">•</button>
+                <button class="btn btn-icon tooltip" data-tip-zh="项目符号 (-)" data-tip-en="Bullet (-)" onclick="insertDashList()">-</button>
+                <button class="btn btn-icon tooltip" data-tip-zh="编号列表" data-tip-en="Numbered List" onclick="execCmd('insertOrderedList')">1.</button>
+            </div>
+            <div class="toolbar-group">
+                <button class="btn btn-icon tooltip" data-tip-zh="撤销" data-tip-en="Undo" onclick="execCmd('undo')">↩</button>
+                <button class="btn btn-icon tooltip" data-tip-zh="重做" data-tip-en="Redo" onclick="execCmd('redo')">↪</button>
+            </div>
+            <div class="toolbar-group" style="border-right:none;">
+                <button class="btn btn-primary" id="generateBtn"><span class="lang-zh">✨ 生成长图</span><span class="lang-en">✨ Generate</span></button>
+                <button class="btn btn-outline" id="downloadBtn"><span class="lang-zh">⬇️ 下载 PNG</span><span class="lang-en">⬇️ Download</span></button>
+            </div>
+        </div>
+
+        <div class="style-hint">
+            <span class="lang-zh">📐 更多排版设置（字体 · 字号 · 行距 · 段落间距 · 底色）在下方 👇</span>
+            <span class="lang-en">📐 More style settings (Font · Size · Line H. · Para Gap · BG) below 👇</span>
+        </div>
+
+        <div class="editor">
+            <div class="editor-left">
+                <div class="panel-label">
+                    <span class="lang-zh">✏️ 富文本编辑</span>
+                    <span class="lang-en">✏️ Rich Text Editor</span>
+                    <span class="badge"><span class="lang-zh">支持粘贴格式</span><span class="lang-en">Paste with styles</span></span>
+                </div>
+                <div id="richEditor" contenteditable="true">
+                    <div class="lang-zh">
+                        <p><b>📌 春江花月夜</b> · 张若虚</p>
+                        <p>春江潮水连海平，海上明月共潮生。</p>
+                        <p>滟滟随波千万里，何处春江无月明！</p>
+                        <p>江流宛转绕芳甸，月照花林皆似霰；</p>
+                        <p>空里流霜不觉飞，汀上白沙看不见。</p>
+                        <p>江天一色无纤尘，皎皎空中孤月轮。</p>
+                        <p>江畔何人初见月？江月何年初照人？</p>
+                        <p>人生代代无穷已，江月年年望相似。</p>
+                        <p>不知江月待何人，但见长江送流水。</p>
+                        <p>—— 保留原排版 · 底色可调</p>
+                    </div>
+                    <div class="lang-en">
+                        <p><b>📌 Spring River in the Flower Moon Night</b> · Zhang Ruoxu</p>
+                        <p>In spring the river rises as high as the sea,</p>
+                        <p>And with the river's tide uprises the moon bright.</p>
+                        <p>She follows the rolling waves for ten thousand li,</p>
+                        <p>Where'er the river flows, there overflows her light.</p>
+                        <p>The river winds around the fragrant islet where</p>
+                        <p>The blooming flowers in her light all look like snow.</p>
+                        <p>You cannot tell her beams from hoar frost in the air,</p>
+                        <p>Nor from white sand upon the beach below.</p>
+                        <p>—— Preserve styles · Custom background</p>
+                    </div>
+                </div>
+            </div>
+            <div class="editor-right">
+                <div class="panel-label">
+                    <span class="lang-zh">🖼️ 长图预览</span>
+                    <span class="lang-en">🖼️ Preview</span>
+                    <span style="font-size:12px; background:#eef2f6; padding:2px 14px; border-radius:30px;"><span class="lang-zh">所见即所得</span><span class="lang-en">WYSIWYG</span></span>
+                </div>
+                <div class="preview-box">
+                    <div id="poster">
+                        <p><b>📌 春江花月夜</b> · 张若虚</p>
+                        <p>春江潮水连海平，海上明月共潮生。</p>
+                        <p>滟滟随波千万里，何处春江无月明！</p>
+                        <p>江流宛转绕芳甸，月照花林皆似霰；</p>
+                        <p>空里流霜不觉飞，汀上白沙看不见。</p>
+                        <p>江天一色无纤尘，皎皎空中孤月轮。</p>
+                        <p>江畔何人初见月？江月何年初照人？</p>
+                        <p>人生代代无穷已，江月年年望相似。</p>
+                        <p>不知江月待何人，但见长江送流水。</p>
+                        <p>—— 保留原排版 · 底色可调</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="style-controls">
+            <label><span class="lang-zh">🔤 字体</span><span class="lang-en">🔤 Font</span> <select id="fontSelect">
+                    <option value="'Times New Roman', serif">Times</option>
+                    <option value="'Georgia', serif">Georgia</option>
+                    <option value="'Helvetica Neue', sans-serif" selected>Helvetica</option>
+                    <option value="'Courier New', monospace">Courier</option>
+                    <option value="'Arial', sans-serif">Arial</option>
+                </select></label>
+            <label><span class="lang-zh">📐 字号</span><span class="lang-en">📐 Size</span> <input type="number" id="fontSizeInput" value="18" min="10" max="40"></label>
+            <label><span class="lang-zh">↕️ 行距</span><span class="lang-en">↕️ Line H.</span> <input type="number" id="lineHeightInput" value="1.8" min="1.2" max="3.0" step="0.1"></label>
+            <label><span class="lang-zh">⏎ 段落间距</span><span class="lang-en">⏎ Para Gap</span> <input type="number" id="paraGapInput" value="0.5" min="0" max="2.0" step="0.05">em</label>
+            <label><span class="lang-zh">🎨 底色</span><span class="lang-en">🎨 BG</span>
+                <span class="bg-preset-group">
+                    <button class="bg-preset-btn active" data-color="#ffffff" style="background:#ffffff;" title="White"></button>
+                    <button class="bg-preset-btn" data-color="#fef9e7" style="background:#fef9e7;" title="Cream"></button>
+                    <button class="bg-preset-btn" data-color="#f3f4f6" style="background:#f3f4f6;" title="Gray"></button>
+                    <button class="bg-preset-btn" data-color="#e8f4fd" style="background:#e8f4fd;" title="Blue"></button>
+                    <button class="bg-preset-btn" data-color="#fef9e7" style="background:#fef9e7;" title="Yellow"></button>
+                    <input type="color" id="customColor" value="#ffffff" title="Custom">
+                </span>
+            </label>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // ========== 语言切换 ==========
+            const langBtns = document.querySelectorAll('.lang-btn');
+            const htmlRoot = document.body;
+            const tooltips = document.querySelectorAll('.tooltip');
+            const messageBar = document.getElementById('messageBar');
+
+            function updateTooltips(lang) {
+                tooltips.forEach(el => {
+                    const tip = el.getAttribute('data-tip-' + lang);
+                    if (tip) {
+                        el.setAttribute('data-tip', tip);
+                    }
+                });
+            }
+
+            function updateMessageBar(lang) {
+                if (!messageBar.dataset.manual) {
+                    const mainText = lang === 'zh' 
+                        ? '💡 选中文字后使用工具栏调整样式' 
+                        : '💡 Select text and use the toolbar to apply styles';
+                    const hintText = lang === 'zh'
+                        ? '⬇️ 下方还有字体/字号/行距/段落间距/底色设置'
+                        : '⬇️ More style options below: Font / Size / Line H. / Para Gap / BG';
+                    messageBar.innerHTML = `
+                        <span>${mainText}</span>
+                        <span class="hint-tip">${hintText}</span>
+                    `;
+                }
+            }
+
+            langBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    langBtns.forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    const lang = this.dataset.lang;
+                    htmlRoot.dataset.lang = lang;
+                    updateTooltips(lang);
+                    updateMessageBar(lang);
+                    switchDefaultContent(lang);
+                });
+            });
+
+            function switchDefaultContent(lang) {
+                const editor = document.getElementById('richEditor');
+                if (editor.dataset.userEdited === 'true') return;
+                if (lang === 'en') {
+                    editor.innerHTML = `
+                        <p><b>📌 Spring River in the Flower Moon Night</b> · Zhang Ruoxu</p>
+                        <p>In spring the river rises as high as the sea,</p>
+                        <p>And with the river's tide uprises the moon bright.</p>
+                        <p>She follows the rolling waves for ten thousand li,</p>
+                        <p>Where'er the river flows, there overflows her light.</p>
+                        <p>The river winds around the fragrant islet where</p>
+                        <p>The blooming flowers in her light all look like snow.</p>
+                        <p>You cannot tell her beams from hoar frost in the air,</p>
+                        <p>Nor from white sand upon the beach below.</p>
+                        <p>—— Preserve styles · Custom background</p>
+                    `;
+                } else {
+                    editor.innerHTML = `
+                        <p><b>📌 春江花月夜</b> · 张若虚</p>
+                        <p>春江潮水连海平，海上明月共潮生。</p>
+                        <p>滟滟随波千万里，何处春江无月明！</p>
+                        <p>江流宛转绕芳甸，月照花林皆似霰；</p>
+                        <p>空里流霜不觉飞，汀上白沙看不见。</p>
+                        <p>江天一色无纤尘，皎皎空中孤月轮。</p>
+                        <p>江畔何人初见月？江月何年初照人？</p>
+                        <p>人生代代无穷已，江月年年望相似。</p>
+                        <p>不知江月待何人，但见长江送流水。</p>
+                        <p>—— 保留原排版 · 底色可调</p>
+                    `;
+                }
+                syncPreview();
+            }
+
+            // ========== 核心元素 ==========
+            const richEditor = document.getElementById('richEditor');
+            const poster = document.getElementById('poster');
+            const heightInput = document.getElementById('heightInput');
+            const generateBtn = document.getElementById('generateBtn');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const fileUpload = document.getElementById('fileUpload');
+            const fontSelect = document.getElementById('fontSelect');
+            const fontSizeInput = document.getElementById('fontSizeInput');
+            const lineHeightInput = document.getElementById('lineHeightInput');
+            const paraGapInput = document.getElementById('paraGapInput');
+            const customColor = document.getElementById('customColor');
+            const presetBtns = document.querySelectorAll('.bg-preset-btn');
+            const textColorPicker = document.getElementById('textColorPicker');
+
+            let currentBgColor = '#ffffff';
+
+            function showMessage(text, type) {
+                messageBar.dataset.manual = 'true';
+                const hintTip = messageBar.querySelector('.hint-tip');
+                const hintHTML = hintTip ? hintTip.outerHTML : '';
+                messageBar.innerHTML = `<span>${text}</span> ${hintHTML}`;
+                messageBar.className = 'message-bar';
+                if (type) messageBar.classList.add(type);
+                if (type === 'error') {
+                    setTimeout(() => {
+                        messageBar.dataset.manual = '';
+                        messageBar.className = 'message-bar';
+                        const lang = htmlRoot.dataset.lang;
+                        const mainText = lang === 'zh' 
+                            ? '💡 选中文字后使用工具栏调整样式' 
+                            : '💡 Select text and use the toolbar to apply styles';
+                        const hintText = lang === 'zh'
+                            ? '⬇️ 下方还有字体/字号/行距/段落间距/底色设置'
+                            : '⬇️ More style options below: Font / Size / Line H. / Para Gap / BG';
+                        messageBar.innerHTML = `
+                            <span>${mainText}</span>
+                            <span class="hint-tip">${hintText}</span>
+                        `;
+                    }, 2500);
+                }
+            }
+
+            // ★★★★★ 核心修复：手动对齐（支持带格式的英文） ★★★★★
+            function alignSelection(alignment) {
+                const sel = window.getSelection();
+                if (!sel || sel.isCollapsed || sel.toString().trim() === '') {
+                    const lang = htmlRoot.dataset.lang;
+                    showMessage(lang === 'zh' ? '⚠️ 请先选中要调整的文字！' : '⚠️ Please select text first!', 'error');
+                    return false;
+                }
+                
+                const range = sel.getRangeAt(0);
+                let container = range.commonAncestorContainer;
+                
+                // 如果 container 是文本节点，获取其父元素
+                if (container.nodeType === 3) {
+                    container = container.parentNode;
+                }
+                
+                // 向上查找块级元素
+                let block = container;
+                const blockTags = ['P', 'DIV', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'UL', 'OL'];
+                
+                while (block && block !== document.body) {
+                    if (blockTags.includes(block.tagName)) {
+                        break;
+                    }
+                    block = block.parentNode;
+                }
+                
+                if (block && block !== document.body && blockTags.includes(block.tagName)) {
+                    // 直接设置块级元素的 text-align
+                    block.style.textAlign = alignment;
+                    return true;
+                }
+                
+                // 如果找不到块级元素，尝试用 execCommand 作为后备
+                try {
+                    document.execCommand('formatBlock', false, '<p>');
+                    document.execCommand('justify' + alignment.charAt(0).toUpperCase() + alignment.slice(1), false, null);
+                    return true;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            // ========== execCmd ==========
+            window.execCmd = function(command, value) {
+                richEditor.focus();
+                
+                // 对齐命令使用手动对齐
+                if (command === 'justifyLeft' || command === 'justifyCenter' || 
+                    command === 'justifyRight' || command === 'justifyFull') {
+                    const alignMap = {
+                        'justifyLeft': 'left',
+                        'justifyCenter': 'center',
+                        'justifyRight': 'right',
+                        'justifyFull': 'justify'
+                    };
+                    const success = alignSelection(alignMap[command]);
+                    if (success) {
+                        syncPreview();
+                        richEditor.focus();
+                        return;
+                    }
+                }
+                
+                // 非对齐命令或对齐失败时使用 execCommand
+                const sel = window.getSelection();
+                if (!sel || sel.isCollapsed || sel.toString().trim() === '') {
+                    const lang = htmlRoot.dataset.lang;
+                    showMessage(lang === 'zh' ? '⚠️ 请先选中要调整的文字！' : '⚠️ Please select text first!', 'error');
+                    return;
+                }
+                
+                try {
+                    document.execCommand(command, false, value || null);
+                } catch (e) {
+                    // 静默处理
+                }
+                syncPreview();
+                richEditor.focus();
+            };
+
+            // ========== 文字颜色 ==========
+            window.applyTextColor = function() {
+                richEditor.focus();
+                const sel = window.getSelection();
+                if (!sel || sel.isCollapsed || sel.toString().trim() === '') {
+                    const lang = htmlRoot.dataset.lang;
+                    showMessage(lang === 'zh' ? '⚠️ 请先选中要变色的文字！' : '⚠️ Please select text to color!', 'error');
+                    return;
+                }
+                const color = textColorPicker.value;
+                document.execCommand('foreColor', false, color);
+                syncPreview();
+                richEditor.focus();
+            };
+
+            // ========== 插入 - 项目符号 ==========
+            window.insertDashList = function() {
+                richEditor.focus();
+                const sel = window.getSelection();
+                
+                if (!sel || sel.isCollapsed) {
+                    const range = sel.getRangeAt(0);
+                    const ul = document.createElement('ul');
+                    ul.className = 'dash';
+                    const li = document.createElement('li');
+                    li.textContent = '项目';
+                    ul.appendChild(li);
+                    range.insertNode(ul);
+                    const newRange = document.createRange();
+                    newRange.setStartAfter(li.firstChild || li);
+                    newRange.collapse(true);
+                    sel.removeAllRanges();
+                    sel.addRange(newRange);
+                    syncPreview();
+                    return;
+                }
+                
+                try {
+                    const range = sel.getRangeAt(0);
+                    const fragment = range.extractContents();
+                    const ul = document.createElement('ul');
+                    ul.className = 'dash';
+                    const li = document.createElement('li');
+                    li.appendChild(fragment);
+                    ul.appendChild(li);
+                    range.insertNode(ul);
+                    const newRange = document.createRange();
+                    newRange.selectNodeContents(li);
+                    sel.removeAllRanges();
+                    sel.addRange(newRange);
+                } catch (e) {
+                    document.execCommand('insertUnorderedList', false, null);
+                }
+                syncPreview();
+            };
+
+            // ========== 背景色 ==========
+            function setBackgroundColor(color) {
+                currentBgColor = color;
+                poster.style.backgroundColor = color;
+                presetBtns.forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.color === color);
+                });
+                customColor.value = color;
+            }
+
+            presetBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    setBackgroundColor(this.dataset.color);
+                });
+            });
+            customColor.addEventListener('input', function() {
+                setBackgroundColor(this.value);
+            });
+
+            // ========== 应用样式 ==========
+            function applyStyles() {
+                const font = fontSelect.value;
+                const size = fontSizeInput.value + 'px';
+                const lineH = lineHeightInput.value;
+                const paraGap = paraGapInput.value + 'em';
+
+                poster.style.fontFamily = font;
+                poster.style.fontSize = size;
+                poster.style.lineHeight = lineH;
+                poster.style.backgroundColor = currentBgColor;
+
+                poster.querySelectorAll('p').forEach(p => p.style.marginBottom = paraGap);
+                richEditor.style.fontFamily = font;
+                richEditor.style.fontSize = size;
+                richEditor.style.lineHeight = lineH;
+                richEditor.querySelectorAll('p').forEach(p => p.style.marginBottom = paraGap);
+
+                const h = parseInt(heightInput.value, 10);
+                if (!isNaN(h) && h > 100) {
+                    poster.style.maxHeight = h + 'px';
+                    poster.style.overflowY = 'auto';
+                }
+            }
+
+            function syncPreview() {
+                poster.innerHTML = richEditor.innerHTML;
+                applyStyles();
+            }
+
+            // ========== 事件监听 ==========
+            richEditor.addEventListener('input', function() {
+                this.dataset.userEdited = 'true';
+                syncPreview();
+            });
+            
+            fontSelect.addEventListener('change', applyStyles);
+            fontSizeInput.addEventListener('input', applyStyles);
+            lineHeightInput.addEventListener('input', applyStyles);
+            paraGapInput.addEventListener('input', applyStyles);
+            
+            heightInput.addEventListener('input', function() {
+                const h = parseInt(this.value, 10);
+                if (!isNaN(h) && h > 100) poster.style.maxHeight = h + 'px';
+            });
+
+            generateBtn.addEventListener('click', function() {
+                syncPreview();
+                const h = parseInt(heightInput.value, 10);
+                if (!isNaN(h) && h > 100) poster.style.maxHeight = h + 'px';
+            });
+
+            // ========== 下载 ==========
+            downloadBtn.addEventListener('click', function() {
+                syncPreview();
+                const targetHeight = parseInt(heightInput.value, 10) || 1200;
+                poster.style.backgroundColor = currentBgColor;
+
+                const exportBox = poster.cloneNode(true);
+                exportBox.style.position = 'fixed';
+                exportBox.style.left = '-100000px';
+                exportBox.style.top = '0';
+                exportBox.style.width = poster.scrollWidth + 'px';
+                exportBox.style.height = targetHeight + 'px';
+                exportBox.style.maxHeight = targetHeight + 'px';
+                exportBox.style.minHeight = targetHeight + 'px';
+                exportBox.style.overflow = 'hidden';
+                exportBox.style.backgroundColor = currentBgColor;
+                exportBox.style.background = currentBgColor;
+                exportBox.style.borderRadius = '0';
+                exportBox.style.padding = poster.style.padding || '24px 28px';
+                exportBox.style.boxShadow = 'none';
+                exportBox.style.border = 'none';
+
+                exportBox.querySelectorAll('*').forEach(el => {
+                    if (el === exportBox) return;
+                    el.style.backgroundColor = 'transparent';
+                    el.style.boxShadow = 'none';
+                    el.style.border = 'none';
+                });
+
+                document.body.appendChild(exportBox);
+
+                html2canvas(exportBox, {
+                    scale: 2,
+                    backgroundColor: currentBgColor,
+                    logging: false,
+                    useCORS: true,
+                    allowTaint: false,
+                    width: exportBox.scrollWidth,
+                    height: targetHeight
+                }).then(canvas => {
+                    const link = document.createElement('a');
+                    link.download = '长图_' + Date.now() + '.png';
+                    link.href = canvas.toDataURL('image/png');
+                    link.click();
+                    document.body.removeChild(exportBox);
+                }).catch(err => {
+                    document.body.removeChild(exportBox);
+                    alert('生成失败: ' + err);
+                });
+            });
+
+            // ========== 文件导入 ==========
+            fileUpload.addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const ext = file.name.split('.').pop().toLowerCase();
+
+                if (ext === 'txt') {
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        const lines = ev.target.result.split('\n').filter(l => l.trim() !== '');
+                        richEditor.innerHTML = lines.map(l => `<p>${l}</p>`).join('');
+                        syncPreview();
+                    };
+                    reader.readAsText(file, 'UTF-8');
+                } else if (ext === 'docx' || ext === 'doc') {
+                    loadMammoth(() => {
+                        const reader = new FileReader();
+                        reader.onload = function(ev) {
+                            mammoth.convertToHtml({ arrayBuffer: ev.target.result })
+                                .then(result => {
+                                    richEditor.innerHTML = result.value;
+                                    syncPreview();
+                                })
+                                .catch(() => fallbackTextRead(file));
+                        };
+                        reader.readAsArrayBuffer(file);
+                    });
+                } else if (ext === 'pdf') {
+                    loadPdfJs(() => {
+                        const reader = new FileReader();
+                        reader.onload = function(ev) {
+                            const typedArray = new Uint8Array(ev.target.result);
+                            pdfjsLib.getDocument(typedArray).promise.then(pdf => {
+                                let fullText = '';
+                                const pages = [];
+                                for (let i = 1; i <= pdf.numPages; i++) pages.push(pdf.getPage(i));
+                                Promise.all(pages).then(pageList => {
+                                    const textPromises = pageList.map(page => page.getTextContent());
+                                    Promise.all(textPromises).then(texts => {
+                                        texts.forEach(text => {
+                                            const pageText = text.items.map(item => item.str).join(' ');
+                                            if (pageText.trim()) fullText += pageText.trim() + '\n\n';
+                                        });
+                                        const paragraphs = fullText.split('\n\n').filter(p => p.trim());
+                                        richEditor.innerHTML = paragraphs.map(p => `<p>${p.trim()}</p>`).join('');
+                                        syncPreview();
+                                    });
+                                });
+                            }).catch(err => alert('PDF解析失败: ' + err));
+                        };
+                        reader.readAsArrayBuffer(file);
+                    });
+                } else {
+                    alert('支持 .txt .docx .doc .pdf');
+                }
+                fileUpload.value = '';
+            });
+
+            function loadMammoth(cb) {
+                if (typeof mammoth !== 'undefined') { cb(); return; }
+                const s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+                s.onload = cb;
+                s.onerror = () => { alert('mammoth加载失败'); cb(); };
+                document.head.appendChild(s);
+            }
+
+            function loadPdfJs(cb) {
+                if (typeof pdfjsLib !== 'undefined') { cb(); return; }
+                const s = document.createElement('script');
+                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+                s.onload = cb;
+                s.onerror = () => { alert('pdf.js加载失败'); cb(); };
+                document.head.appendChild(s);
+            }
+
+            function fallbackTextRead(file) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    const lines = ev.target.result.split('\n').filter(l => l.trim());
+                    richEditor.innerHTML = lines.map(l => `<p>${l}</p>`).join('');
+                    syncPreview();
+                };
+                reader.readAsText(file, 'UTF-8');
+            }
+
+            // ========== 初始化 ==========
+            updateMessageBar('zh');
+            setBackgroundColor('#ffffff');
+            syncPreview();
+        })();
+    </script>
+</body>
+</html>
