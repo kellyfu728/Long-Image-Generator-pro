@@ -45,14 +45,23 @@ The sample texts and screenshots used in this repository are original works by t
 The sample text shown in the screenshots is an original fanfiction excerpt written by the author and is used solely for demonstrating the editor and layout features.
 
 ```
-<p align="center">
-    <img src="images/editor.png" width="800">
-</p>
+### 📝 Editor
 
 <p align="center">
-    <img src="images/export.png" width="800">
+    <img src="image/editor.png" width="900">
 </p>
 
+The main editor interface with rich text editing features.
+
+---
+
+### 🖼 Export Result
+
+<p align="center">
+    <img src="image/export.png" width="900">
+</p>
+
+Example of a generated long image exported from the editor.
 ```
 
 ---
