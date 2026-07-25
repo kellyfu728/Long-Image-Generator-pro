@@ -7,6 +7,17 @@
 无需安装任何软件，打开网页即可编辑、排版并导出高清长图。
 
 ---
+## 📌 声明
+
+本项目为作者开发的个人项目，仅用于学习交流、作品展示及存档。
+
+仓库中的源码仅供参考学习。
+
+未经作者许可，不得将本项目用于商业用途，不得转载、分发或整合至商业产品。
+
+仓库中的示例文本、截图等内容均为作者原创，不属于软件授权范围。
+
+---
 
 ## 功能特点
 
@@ -33,12 +44,13 @@
 截图中的示例文本为作者原创同人文片段，仅用于展示编辑器排版及长图导出效果。
 
 ```
-images/editor.png
-<img width="1440" height="817" alt="image" src="https://github.com/user-attachments/assets/21084f52-d0f6-4846-b0fb-c9f53b73a760" />
+<p align="center">
+    <img src="images/editor_zh.png" width="800">
+</p>
 
-
-images/export.png
-<img width="1068" height="2400" alt="长图_1784964841334" src="https://github.com/user-attachments/assets/0d6acb73-6254-49cb-9999-aec7b6fb83a2" />
+<p align="center">
+    <img src="images/export_zh.png" width="800">
+</p>
 
 
 ```
