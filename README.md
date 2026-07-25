@@ -112,4 +112,4 @@ in any modern browser.
 
 ## License
 
-MIT License.
+All Rights Reserved
