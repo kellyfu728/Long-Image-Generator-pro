@@ -30,11 +30,17 @@
 
 ## 项目截图
 
-可以放几张项目截图，例如：
+截图中的示例文本为作者原创同人文片段，仅用于展示编辑器排版及长图导出效果。
 
 ```
 images/editor.png
+<img width="1440" height="817" alt="image" src="https://github.com/user-attachments/assets/21084f52-d0f6-4846-b0fb-c9f53b73a760" />
+
+
 images/export.png
+<img width="1068" height="2400" alt="长图_1784964841334" src="https://github.com/user-attachments/assets/0d6acb73-6254-49cb-9999-aec7b6fb83a2" />
+
+
 ```
 
 ---
@@ -92,4 +98,13 @@ index.html
 
 ## 开源协议
 
-MIT License。
+All Rights Reserved
+
+
+## 声明
+
+本项目为作者开发的个人工具，仅用于作品展示、学习交流及存档。
+
+未经作者许可，请勿将本项目或其中的资源用于商业用途。
+
+README 中展示的示例文本为作者原创作品，仅用于演示，不属于软件授权范围。
