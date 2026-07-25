@@ -8,6 +8,18 @@ No installation required. Simply open the HTML file in your browser and start ed
 
 ---
 
+## 📌 Notice
+
+This project is a personal project created for learning, communication, portfolio display, and archival purposes.
+
+The source code is shared for reference only.
+
+Commercial use, redistribution, or incorporation into commercial products without prior permission from the author is not permitted.
+
+The sample texts and screenshots used in this repository are original works by the author and are not included in any software license.
+
+---
+
 ## Features
 
 - Rich text editor
@@ -30,11 +42,17 @@ No installation required. Simply open the HTML file in your browser and start ed
 
 ## Screenshot
 
-Add screenshots here.
+The sample text shown in the screenshots is an original fanfiction excerpt written by the author and is used solely for demonstrating the editor and layout features.
 
 ```
-images/editor.png
-images/export.png
+<p align="center">
+    <img src="images/editor.png" width="800">
+</p>
+
+<p align="center">
+    <img src="images/export.png" width="800">
+</p>
+
 ```
 
 ---
