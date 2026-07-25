@@ -97,11 +97,16 @@ index.html
 ## 项目结构
 
 ```
-.
+Long-Image-Generator-pro/
+│
 ├── index.html
 ├── README.md
 ├── README_zh.md
-└── LICENSE
+└── image/
+    ├── editor.png
+    ├── export.png
+    ├── editor_zh.png
+    └── export_zh.png
 ```
 
 ---
