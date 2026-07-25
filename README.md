@@ -116,11 +116,11 @@ Long-Image-Generator-pro/
 
 ## Roadmap
 
-- Markdown support
-- Drag & Drop images
-- More export formats
-- Better Word compatibility
+- Support image insertion
+- Support tables
+- More built-in templates
 - Dark mode
+- Better mobile support
 
 ---
 
