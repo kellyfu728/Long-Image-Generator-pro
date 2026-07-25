@@ -44,7 +44,7 @@ The sample texts and screenshots used in this repository are original works by t
 
 The sample text shown in the screenshots is an original fanfiction excerpt written by the author and is used solely for demonstrating the editor and layout features.
 
-```
+
 ### 📝 Editor
 
 <p align="center">
@@ -62,7 +62,7 @@ The main editor interface with rich text editing features.
 </p>
 
 Example of a generated long image exported from the editor.
-```
+
 
 ---
 
@@ -100,11 +100,16 @@ in any modern browser.
 ## Project Structure
 
 ```
-.
+Long-Image-Generator-pro/
+│
 ├── index.html
 ├── README.md
 ├── README_zh.md
-└── LICENSE
+└── image/
+    ├── editor.png
+    ├── export.png
+    ├── editor_zh.png
+    └── export_zh.png
 ```
 
 ---
