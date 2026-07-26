@@ -6,6 +6,8 @@ A browser-based rich text editor for generating high-quality long images.
 
 No installation required. Simply open the HTML file in your browser and start editing.
 
+Project URL: https://kellyfu728.github.io/Long-Image-Generator-pro/
+
 ---
 
 ## About
