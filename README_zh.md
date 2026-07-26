@@ -6,6 +6,8 @@
 
 无需安装任何软件，打开网页即可编辑、排版并导出高清长图。
 
+项目 URL: https://kellyfu728.github.io/Long-Image-Generator-pro/
+
 ---
 
 ## 项目介绍
