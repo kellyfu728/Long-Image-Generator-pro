@@ -136,5 +136,7 @@ Long-Image-Generator-pro/
 
 ## 开源协议
 
+保留所有权利
+
 All Rights Reserved
 
