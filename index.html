@@ -679,6 +679,7 @@
                     updateTooltips(lang);
                     updateMessageBar(lang);
                     switchDefaultContent(lang);
+                    showOnboardingIfNeeded(lang);
                 });
             });
 
@@ -740,6 +741,16 @@
             let currentBgColor = '#ffffff';
             let generatedSnapshot = null;
             let hasUnappliedChanges = false;
+
+            function onboardingStorageKey(lang) {
+                return lang === 'en'
+                    ? 'longImageGeneratorOnboardingSeenEn'
+                    : 'longImageGeneratorOnboardingSeen';
+            }
+
+            function showOnboardingIfNeeded(lang) {
+                onboarding.hidden = Boolean(localStorage.getItem(onboardingStorageKey(lang)));
+            }
 
             function showMessage(text, type) {
                 messageBar.dataset.manual = 'true';
@@ -1143,10 +1154,10 @@
             syncPreview();
             captureSnapshot();
             if (window.matchMedia('(max-width: 700px)').matches) canvasSettings.removeAttribute('open');
-            if (!localStorage.getItem('longImageGeneratorOnboardingSeen')) onboarding.hidden = false;
+            showOnboardingIfNeeded('zh');
             dismissOnboarding.addEventListener('click', function() {
                 onboarding.hidden = true;
-                localStorage.setItem('longImageGeneratorOnboardingSeen', 'true');
+                localStorage.setItem(onboardingStorageKey(htmlRoot.dataset.lang), 'true');
             });
         })();
     </script>
