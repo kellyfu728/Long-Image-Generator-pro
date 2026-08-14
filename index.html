@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>长图生成器 Pro · Word风格</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -265,6 +264,7 @@
             background: transparent;
             border-radius: 16px;
             padding: 6px;
+            position: relative;
         }
         #poster {
             width: 100%;
@@ -305,6 +305,7 @@
             align-items: center;
             border: 1px solid #eef2f6;
         }
+        .canvas-settings > summary { display: none; }
         .style-controls label {
             display: flex;
             align-items: center;
@@ -354,6 +355,54 @@
         }
         .bg-preset-btn:hover { transform: scale(1.1); border-color: #0f172a; }
         .bg-preset-btn.active { border-color: #0f172a; border-width: 3px; }
+        .height-settings {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .height-settings select { min-width: 92px; }
+        .height-settings input[hidden] { display: none; }
+        .crop-warning {
+            display: none;
+            position: absolute;
+            left: 6px;
+            right: 6px;
+            bottom: 6px;
+            z-index: 2;
+            padding: 7px 12px;
+            border-top: 2px dashed #ef4444;
+            background: rgba(254, 226, 226, 0.94);
+            color: #b91c1c;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            pointer-events: none;
+        }
+        .crop-warning.visible { display: block; }
+        .mobile-tabs { display: none; }
+        .onboarding {
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(15, 23, 42, 0.35);
+            backdrop-filter: blur(3px);
+        }
+        .onboarding[hidden] { display: none; }
+        .onboarding-card {
+            width: min(420px, 100%);
+            padding: 26px;
+            border-radius: 22px;
+            background: white;
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.22);
+            text-align: center;
+        }
+        .onboarding-card h2 { margin-bottom: 10px; font-size: 21px; }
+        .onboarding-card p { margin-bottom: 20px; color: #475569; line-height: 1.7; }
         [data-lang="en"] .lang-zh { display: none; }
         [data-lang="zh"] .lang-en { display: none; }
         .tooltip { position: relative; }
@@ -372,14 +421,57 @@
             pointer-events: none;
         }
         @media (max-width: 700px) {
-            .app { padding: 16px; }
-            .toolbar { flex-direction: column; align-items: stretch; gap: 8px; }
-            .toolbar-group { border-right: none; padding-right: 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
-            .toolbar-group:last-child { border-bottom: none; }
-            .style-controls { flex-direction: column; align-items: stretch; border-radius: 20px; }
+            body { padding: 10px; }
+            .app { padding: 14px; border-radius: 22px; }
+            h1 { font-size: 22px; }
+            h1 small { font-size: 12px; }
+            .message-bar, .style-hint { display: none; }
+            .toolbar {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                gap: 6px;
+                padding: 9px;
+                scrollbar-width: thin;
+            }
+            .toolbar-group { flex: 0 0 auto; flex-wrap: nowrap; }
+            .toolbar-actions { order: -1; position: sticky; left: 0; z-index: 2; background: #f8fafc; }
+            .mobile-tabs {
+                display: flex;
+                gap: 4px;
+                margin: 12px 0 6px;
+                padding: 4px;
+                border-radius: 30px;
+                background: #f1f5f9;
+            }
+            .mobile-tab { flex: 1; }
+            .mobile-tab.active { background: #0f172a; color: white; }
+            .editor { display: block; }
+            .editor-right { display: none; }
+            body.mobile-preview .editor-left { display: none; }
+            body.mobile-preview .editor-right { display: block; }
+            .style-controls {
+                flex-direction: column;
+                align-items: stretch;
+                border-radius: 18px;
+                padding: 14px;
+            }
+            .canvas-settings { margin-top: 12px; }
+            .canvas-settings > summary {
+                display: block;
+                padding: 11px 16px;
+                border: 1px solid #e2e8f0;
+                border-radius: 14px;
+                background: #f8fafc;
+                color: #1e293b;
+                font-size: 14px;
+                font-weight: 600;
+                cursor: pointer;
+            }
+            .canvas-settings[open] > summary { margin-bottom: 8px; }
+            .style-controls label { justify-content: space-between; }
             .header-row { flex-direction: column; align-items: stretch; }
-            .message-bar { flex-direction: column; align-items: flex-start; }
-            .message-bar .hint-tip { margin-left: 0; }
+            #richEditor { height: 52vh; }
+            #poster { max-height: none; }
         }
     </style>
 </head>
@@ -398,21 +490,14 @@
         </div>
 
         <div id="messageBar" class="message-bar">
-            <span class="lang-zh">💡 选中文字后使用工具栏调整样式</span>
-            <span class="lang-en">💡 Select text and use the toolbar to apply styles</span>
-            <span class="hint-tip">
-                <span class="lang-zh">⬇️ 下方还有字体/字号/行距/段落间距/底色设置</span>
-                <span class="lang-en">⬇️ More style options below: Font / Size / Line H. / Para Gap / BG</span>
-            </span>
+            <span class="lang-zh">💡 编辑后点击“生成长图”保存本次排版</span>
+            <span class="lang-en">💡 Click Generate after editing to save the current layout</span>
         </div>
 
         <div class="toolbar">
             <div class="toolbar-group">
-                <label><span class="lang-zh">📏 高度</span><span class="lang-en">📏 Height</span> <input type="number" id="heightInput" value="1200" min="300" max="5000"></label>
-            </div>
-            <div class="toolbar-group">
                 <label class="file-label">📂 <span class="lang-zh">导入</span><span class="lang-en">Import</span>
-                    <input type="file" id="fileUpload" accept=".txt,.docx,.doc,.pdf">
+                    <input type="file" id="fileUpload" accept=".txt,.docx">
                 </label>
             </div>
             <div class="toolbar-group">
@@ -443,15 +528,17 @@
                 <button class="btn btn-icon tooltip" data-tip-zh="撤销" data-tip-en="Undo" onclick="execCmd('undo')">↩</button>
                 <button class="btn btn-icon tooltip" data-tip-zh="重做" data-tip-en="Redo" onclick="execCmd('redo')">↪</button>
             </div>
-            <div class="toolbar-group" style="border-right:none;">
+            <div class="toolbar-group toolbar-actions" style="border-right:none;">
                 <button class="btn btn-primary" id="generateBtn"><span class="lang-zh">✨ 生成长图</span><span class="lang-en">✨ Generate</span></button>
                 <button class="btn btn-outline" id="downloadBtn"><span class="lang-zh">⬇️ 下载 PNG</span><span class="lang-en">⬇️ Download</span></button>
             </div>
         </div>
 
-        <div class="style-hint">
-            <span class="lang-zh">📐 更多排版设置（字体 · 字号 · 行距 · 段落间距 · 底色）在下方 👇</span>
-            <span class="lang-en">📐 More style settings (Font · Size · Line H. · Para Gap · BG) below 👇</span>
+        <div class="style-hint"><span class="lang-zh">📐 字体、间距、底色与画布高度可在下方调整</span><span class="lang-en">📐 Font, spacing, background and canvas height are below</span></div>
+
+        <div class="mobile-tabs" role="tablist">
+            <button class="btn mobile-tab active" data-panel="edit" role="tab"><span class="lang-zh">✏️ 编辑</span><span class="lang-en">✏️ Edit</span></button>
+            <button class="btn mobile-tab" data-panel="preview" role="tab"><span class="lang-zh">🖼️ 预览</span><span class="lang-en">🖼️ Preview</span></button>
         </div>
 
         <div class="editor">
@@ -507,11 +594,21 @@
                         <p>不知江月待何人，但见长江送流水。</p>
                         <p>—— 保留原排版 · 底色可调</p>
                     </div>
+                    <div id="cropWarning" class="crop-warning"><span class="lang-zh">裁切线：下方内容不会被导出</span><span class="lang-en">Crop line: content below will not be exported</span></div>
                 </div>
             </div>
         </div>
 
+        <details id="canvasSettings" class="canvas-settings" open>
+            <summary><span class="lang-zh">⚙️ 画布设置</span><span class="lang-en">⚙️ Canvas settings</span></summary>
         <div class="style-controls">
+            <label class="height-settings"><span><span class="lang-zh">📏 画布高度</span><span class="lang-en">📏 Canvas</span></span>
+                <select id="heightMode">
+                    <option value="auto" data-zh="自动高度" data-en="Auto height">自动高度</option>
+                    <option value="fixed" data-zh="固定高度" data-en="Fixed height">固定高度</option>
+                </select>
+                <input type="number" id="heightInput" value="1200" min="300" max="10000" hidden aria-label="固定高度">
+            </label>
             <label><span class="lang-zh">🔤 字体</span><span class="lang-en">🔤 Font</span> <select id="fontSelect">
                     <option value="'Times New Roman', serif">Times</option>
                     <option value="'Georgia', serif">Georgia</option>
@@ -533,6 +630,15 @@
                 </span>
             </label>
         </div>
+        </details>
+    </div>
+
+    <div id="onboarding" class="onboarding" hidden>
+        <div class="onboarding-card" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
+            <h2 id="onboardingTitle"><span class="lang-zh">欢迎使用长图生成器</span><span class="lang-en">Welcome</span></h2>
+            <p><span class="lang-zh">粘贴或导入文章 → 调整排版 → 生成并下载长图</span><span class="lang-en">Paste or import → adjust the layout → generate and download</span></p>
+            <button id="dismissOnboarding" class="btn btn-primary"><span class="lang-zh">知道了</span><span class="lang-en">Got it</span></button>
+        </div>
     </div>
 
     <script>
@@ -550,20 +656,17 @@
                         el.setAttribute('data-tip', tip);
                     }
                 });
+                document.querySelectorAll('#heightMode option').forEach(option => {
+                    option.textContent = option.dataset[lang];
+                });
             }
 
             function updateMessageBar(lang) {
                 if (!messageBar.dataset.manual) {
                     const mainText = lang === 'zh' 
-                        ? '💡 选中文字后使用工具栏调整样式' 
-                        : '💡 Select text and use the toolbar to apply styles';
-                    const hintText = lang === 'zh'
-                        ? '⬇️ 下方还有字体/字号/行距/段落间距/底色设置'
-                        : '⬇️ More style options below: Font / Size / Line H. / Para Gap / BG';
-                    messageBar.innerHTML = `
-                        <span>${mainText}</span>
-                        <span class="hint-tip">${hintText}</span>
-                    `;
+                        ? '💡 编辑后点击“生成长图”保存本次排版' 
+                        : '💡 Click Generate after editing to save the current layout';
+                    messageBar.innerHTML = `<span>${mainText}</span>`;
                 }
             }
 
@@ -610,12 +713,15 @@
                     `;
                 }
                 syncPreview();
+                markDirty();
             }
 
             // ========== 核心元素 ==========
             const richEditor = document.getElementById('richEditor');
             const poster = document.getElementById('poster');
+            const heightMode = document.getElementById('heightMode');
             const heightInput = document.getElementById('heightInput');
+            const cropWarning = document.getElementById('cropWarning');
             const generateBtn = document.getElementById('generateBtn');
             const downloadBtn = document.getElementById('downloadBtn');
             const fileUpload = document.getElementById('fileUpload');
@@ -626,14 +732,18 @@
             const customColor = document.getElementById('customColor');
             const presetBtns = document.querySelectorAll('.bg-preset-btn');
             const textColorPicker = document.getElementById('textColorPicker');
+            const mobileTabs = document.querySelectorAll('.mobile-tab');
+            const onboarding = document.getElementById('onboarding');
+            const dismissOnboarding = document.getElementById('dismissOnboarding');
+            const canvasSettings = document.getElementById('canvasSettings');
 
             let currentBgColor = '#ffffff';
+            let generatedSnapshot = null;
+            let hasUnappliedChanges = false;
 
             function showMessage(text, type) {
                 messageBar.dataset.manual = 'true';
-                const hintTip = messageBar.querySelector('.hint-tip');
-                const hintHTML = hintTip ? hintTip.outerHTML : '';
-                messageBar.innerHTML = `<span>${text}</span> ${hintHTML}`;
+                messageBar.innerHTML = `<span>${text}</span>`;
                 messageBar.className = 'message-bar';
                 if (type) messageBar.classList.add(type);
                 if (type === 'error') {
@@ -641,16 +751,7 @@
                         messageBar.dataset.manual = '';
                         messageBar.className = 'message-bar';
                         const lang = htmlRoot.dataset.lang;
-                        const mainText = lang === 'zh' 
-                            ? '💡 选中文字后使用工具栏调整样式' 
-                            : '💡 Select text and use the toolbar to apply styles';
-                        const hintText = lang === 'zh'
-                            ? '⬇️ 下方还有字体/字号/行距/段落间距/底色设置'
-                            : '⬇️ More style options below: Font / Size / Line H. / Para Gap / BG';
-                        messageBar.innerHTML = `
-                            <span>${mainText}</span>
-                            <span class="hint-tip">${hintText}</span>
-                        `;
+                        updateMessageBar(lang);
                     }, 2500);
                 }
             }
@@ -715,6 +816,7 @@
                     const success = alignSelection(alignMap[command]);
                     if (success) {
                         syncPreview();
+                        markDirty();
                         richEditor.focus();
                         return;
                     }
@@ -734,6 +836,7 @@
                     // 静默处理
                 }
                 syncPreview();
+                markDirty();
                 richEditor.focus();
             };
 
@@ -749,6 +852,7 @@
                 const color = textColorPicker.value;
                 document.execCommand('foreColor', false, color);
                 syncPreview();
+                markDirty();
                 richEditor.focus();
             };
 
@@ -771,6 +875,7 @@
                     sel.removeAllRanges();
                     sel.addRange(newRange);
                     syncPreview();
+                    markDirty();
                     return;
                 }
                 
@@ -791,6 +896,7 @@
                     document.execCommand('insertUnorderedList', false, null);
                 }
                 syncPreview();
+                markDirty();
             };
 
             // ========== 背景色 ==========
@@ -806,10 +912,12 @@
             presetBtns.forEach(btn => {
                 btn.addEventListener('click', function() {
                     setBackgroundColor(this.dataset.color);
+                    markDirty();
                 });
             });
             customColor.addEventListener('input', function() {
                 setBackgroundColor(this.value);
+                markDirty();
             });
 
             // ========== 应用样式 ==========
@@ -829,12 +937,7 @@
                 richEditor.style.fontSize = size;
                 richEditor.style.lineHeight = lineH;
                 richEditor.querySelectorAll('p').forEach(p => p.style.marginBottom = paraGap);
-
-                const h = parseInt(heightInput.value, 10);
-                if (!isNaN(h) && h > 100) {
-                    poster.style.maxHeight = h + 'px';
-                    poster.style.overflowY = 'auto';
-                }
+                applyHeightMode();
             }
 
             function syncPreview() {
@@ -842,76 +945,151 @@
                 applyStyles();
             }
 
-            // ========== 事件监听 ==========
-            richEditor.addEventListener('input', function() {
-                this.dataset.userEdited = 'true';
-                syncPreview();
-            });
-            
-            fontSelect.addEventListener('change', applyStyles);
-            fontSizeInput.addEventListener('input', applyStyles);
-            lineHeightInput.addEventListener('input', applyStyles);
-            paraGapInput.addEventListener('input', applyStyles);
-            
-            heightInput.addEventListener('input', function() {
-                const h = parseInt(this.value, 10);
-                if (!isNaN(h) && h > 100) poster.style.maxHeight = h + 'px';
-            });
+            function applyHeightMode() {
+                const fixed = heightMode.value === 'fixed';
+                heightInput.hidden = !fixed;
+                if (!fixed) {
+                    poster.style.height = 'auto';
+                    poster.style.maxHeight = '520px';
+                    poster.style.overflowY = 'auto';
+                    cropWarning.classList.remove('visible');
+                    return;
+                }
+                const height = Math.max(300, parseInt(heightInput.value, 10) || 1200);
+                poster.style.height = height + 'px';
+                poster.style.maxHeight = height + 'px';
+                poster.style.overflowY = 'auto';
+                requestAnimationFrame(updateCropWarning);
+            }
 
-            generateBtn.addEventListener('click', function() {
-                syncPreview();
-                const h = parseInt(heightInput.value, 10);
-                if (!isNaN(h) && h > 100) poster.style.maxHeight = h + 'px';
-            });
+            function updateCropWarning() {
+                if (heightMode.value !== 'fixed') {
+                    cropWarning.classList.remove('visible');
+                    return;
+                }
+                const isCropped = poster.scrollHeight > poster.clientHeight + 1;
+                cropWarning.classList.toggle('visible', isCropped);
+            }
 
-            // ========== 下载 ==========
-            downloadBtn.addEventListener('click', function() {
-                syncPreview();
-                const targetHeight = parseInt(heightInput.value, 10) || 1200;
-                poster.style.backgroundColor = currentBgColor;
+            function markDirty() {
+                hasUnappliedChanges = true;
+                generateBtn.classList.add('has-changes');
+                generateBtn.title = htmlRoot.dataset.lang === 'zh' ? '有尚未应用的更改' : 'There are unapplied changes';
+            }
 
-                const exportBox = poster.cloneNode(true);
+            function captureSnapshot() {
+                generatedSnapshot = {
+                    html: richEditor.innerHTML,
+                    font: fontSelect.value,
+                    size: fontSizeInput.value,
+                    lineHeight: lineHeightInput.value,
+                    paraGap: paraGapInput.value,
+                    background: currentBgColor,
+                    heightMode: heightMode.value,
+                    height: Math.max(300, parseInt(heightInput.value, 10) || 1200)
+                };
+                hasUnappliedChanges = false;
+                generateBtn.classList.remove('has-changes');
+                generateBtn.title = '';
+            }
+
+            function createExportBox(snapshot) {
+                const exportBox = document.createElement('div');
+                exportBox.innerHTML = snapshot.html;
                 exportBox.style.position = 'fixed';
                 exportBox.style.left = '-100000px';
                 exportBox.style.top = '0';
                 exportBox.style.width = poster.scrollWidth + 'px';
-                exportBox.style.height = targetHeight + 'px';
-                exportBox.style.maxHeight = targetHeight + 'px';
-                exportBox.style.minHeight = targetHeight + 'px';
+                exportBox.style.boxSizing = 'border-box';
+                exportBox.style.padding = '24px 28px';
+                exportBox.style.fontFamily = snapshot.font;
+                exportBox.style.fontSize = snapshot.size + 'px';
+                exportBox.style.lineHeight = snapshot.lineHeight;
+                exportBox.style.color = getComputedStyle(poster).color;
+                exportBox.style.background = snapshot.background;
                 exportBox.style.overflow = 'hidden';
-                exportBox.style.backgroundColor = currentBgColor;
-                exportBox.style.background = currentBgColor;
-                exportBox.style.borderRadius = '0';
-                exportBox.style.padding = poster.style.padding || '24px 28px';
-                exportBox.style.boxShadow = 'none';
-                exportBox.style.border = 'none';
-
-                exportBox.querySelectorAll('*').forEach(el => {
-                    if (el === exportBox) return;
-                    el.style.backgroundColor = 'transparent';
-                    el.style.boxShadow = 'none';
-                    el.style.border = 'none';
-                });
-
+                exportBox.querySelectorAll('p').forEach(p => p.style.marginBottom = snapshot.paraGap + 'em');
                 document.body.appendChild(exportBox);
+
+                const naturalHeight = Math.ceil(exportBox.scrollHeight);
+                const exportHeight = snapshot.heightMode === 'fixed' ? snapshot.height : naturalHeight;
+                exportBox.style.height = exportHeight + 'px';
+                exportBox.style.minHeight = exportHeight + 'px';
+                exportBox.style.maxHeight = exportHeight + 'px';
+                return { exportBox, exportHeight };
+            }
+
+            // ========== 事件监听 ==========
+            richEditor.addEventListener('input', function() {
+                this.dataset.userEdited = 'true';
+                syncPreview();
+                markDirty();
+            });
+            
+            [fontSelect, fontSizeInput, lineHeightInput, paraGapInput].forEach(control => {
+                control.addEventListener(control.tagName === 'SELECT' ? 'change' : 'input', function() {
+                    applyStyles();
+                    markDirty();
+                });
+            });
+
+            heightMode.addEventListener('change', function() {
+                applyHeightMode();
+                markDirty();
+            });
+            heightInput.addEventListener('input', function() {
+                applyHeightMode();
+                markDirty();
+            });
+
+            mobileTabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    mobileTabs.forEach(item => item.classList.remove('active'));
+                    this.classList.add('active');
+                    htmlRoot.classList.toggle('mobile-preview', this.dataset.panel === 'preview');
+                    if (this.dataset.panel === 'preview') updateCropWarning();
+                });
+            });
+
+            generateBtn.addEventListener('click', function() {
+                syncPreview();
+                captureSnapshot();
+                const lang = htmlRoot.dataset.lang;
+                showMessage(lang === 'zh' ? '✅ 已保存当前内容和排版，可以下载了' : '✅ Current content and layout saved. Ready to download.', 'success');
+            });
+
+            // ========== 下载 ==========
+            downloadBtn.addEventListener('click', function() {
+                const lang = htmlRoot.dataset.lang;
+                if (hasUnappliedChanges) {
+                    showMessage(lang === 'zh' ? '⚠️ 请先点击“生成长图”保存最新更改' : '⚠️ Generate first to save your latest changes', 'error');
+                    return;
+                }
+                if (!generatedSnapshot) captureSnapshot();
+                const { exportBox, exportHeight } = createExportBox(generatedSnapshot);
+                downloadBtn.disabled = true;
+                showMessage(lang === 'zh' ? '⏳ 正在生成图片…' : '⏳ Creating image…');
 
                 html2canvas(exportBox, {
                     scale: 2,
-                    backgroundColor: currentBgColor,
+                    backgroundColor: generatedSnapshot.background,
                     logging: false,
                     useCORS: true,
                     allowTaint: false,
                     width: exportBox.scrollWidth,
-                    height: targetHeight
+                    height: exportHeight
                 }).then(canvas => {
                     const link = document.createElement('a');
                     link.download = '长图_' + Date.now() + '.png';
                     link.href = canvas.toDataURL('image/png');
                     link.click();
                     document.body.removeChild(exportBox);
+                    downloadBtn.disabled = false;
+                    showMessage(lang === 'zh' ? '✅ PNG 已生成' : '✅ PNG created', 'success');
                 }).catch(err => {
                     document.body.removeChild(exportBox);
-                    alert('生成失败: ' + err);
+                    downloadBtn.disabled = false;
+                    showMessage((lang === 'zh' ? '❌ 生成失败：' : '❌ Export failed: ') + err.message, 'error');
                 });
             });
 
@@ -927,9 +1105,10 @@
                         const lines = ev.target.result.split('\n').filter(l => l.trim() !== '');
                         richEditor.innerHTML = lines.map(l => `<p>${l}</p>`).join('');
                         syncPreview();
+                        markDirty();
                     };
                     reader.readAsText(file, 'UTF-8');
-                } else if (ext === 'docx' || ext === 'doc') {
+                } else if (ext === 'docx') {
                     loadMammoth(() => {
                         const reader = new FileReader();
                         reader.onload = function(ev) {
@@ -937,38 +1116,14 @@
                                 .then(result => {
                                     richEditor.innerHTML = result.value;
                                     syncPreview();
+                                    markDirty();
                                 })
-                                .catch(() => fallbackTextRead(file));
-                        };
-                        reader.readAsArrayBuffer(file);
-                    });
-                } else if (ext === 'pdf') {
-                    loadPdfJs(() => {
-                        const reader = new FileReader();
-                        reader.onload = function(ev) {
-                            const typedArray = new Uint8Array(ev.target.result);
-                            pdfjsLib.getDocument(typedArray).promise.then(pdf => {
-                                let fullText = '';
-                                const pages = [];
-                                for (let i = 1; i <= pdf.numPages; i++) pages.push(pdf.getPage(i));
-                                Promise.all(pages).then(pageList => {
-                                    const textPromises = pageList.map(page => page.getTextContent());
-                                    Promise.all(textPromises).then(texts => {
-                                        texts.forEach(text => {
-                                            const pageText = text.items.map(item => item.str).join(' ');
-                                            if (pageText.trim()) fullText += pageText.trim() + '\n\n';
-                                        });
-                                        const paragraphs = fullText.split('\n\n').filter(p => p.trim());
-                                        richEditor.innerHTML = paragraphs.map(p => `<p>${p.trim()}</p>`).join('');
-                                        syncPreview();
-                                    });
-                                });
-                            }).catch(err => alert('PDF解析失败: ' + err));
+                                .catch(() => showMessage(htmlRoot.dataset.lang === 'zh' ? '❌ Word 文件读取失败' : '❌ Could not read the Word file', 'error'));
                         };
                         reader.readAsArrayBuffer(file);
                     });
                 } else {
-                    alert('支持 .txt .docx .doc .pdf');
+                    showMessage(htmlRoot.dataset.lang === 'zh' ? '⚠️ 仅支持 .txt 和 .docx' : '⚠️ Only .txt and .docx are supported', 'error');
                 }
                 fileUpload.value = '';
             });
@@ -978,33 +1133,21 @@
                 const s = document.createElement('script');
                 s.src = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
                 s.onload = cb;
-                s.onerror = () => { alert('mammoth加载失败'); cb(); };
+                s.onerror = () => showMessage(htmlRoot.dataset.lang === 'zh' ? '❌ Word 导入组件加载失败' : '❌ Word import component failed to load', 'error');
                 document.head.appendChild(s);
-            }
-
-            function loadPdfJs(cb) {
-                if (typeof pdfjsLib !== 'undefined') { cb(); return; }
-                const s = document.createElement('script');
-                s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-                s.onload = cb;
-                s.onerror = () => { alert('pdf.js加载失败'); cb(); };
-                document.head.appendChild(s);
-            }
-
-            function fallbackTextRead(file) {
-                const reader = new FileReader();
-                reader.onload = function(ev) {
-                    const lines = ev.target.result.split('\n').filter(l => l.trim());
-                    richEditor.innerHTML = lines.map(l => `<p>${l}</p>`).join('');
-                    syncPreview();
-                };
-                reader.readAsText(file, 'UTF-8');
             }
 
             // ========== 初始化 ==========
             updateMessageBar('zh');
             setBackgroundColor('#ffffff');
             syncPreview();
+            captureSnapshot();
+            if (window.matchMedia('(max-width: 700px)').matches) canvasSettings.removeAttribute('open');
+            if (!localStorage.getItem('longImageGeneratorOnboardingSeen')) onboarding.hidden = false;
+            dismissOnboarding.addEventListener('click', function() {
+                onboarding.hidden = true;
+                localStorage.setItem('longImageGeneratorOnboardingSeen', 'true');
+            });
         })();
     </script>
 </body>

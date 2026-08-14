@@ -35,7 +35,7 @@ The sample texts and screenshots used in this repository are original works by t
 ## Features
 
 - Rich text editor
-- Import TXT / DOC / DOCX / PDF
+- Import TXT / DOCX (DOCX keeps supported Word formatting)
 - Word-style editing
 - Text alignment (Left / Center / Right / Justify)
 - Font customization
@@ -45,9 +45,12 @@ The sample texts and screenshots used in this repository are original works by t
 - Text color customization
 - Multiple background presets
 - Custom background color
-- Adjustable export height
+- Automatic full-content height by default
+- Optional fixed export height with a crop warning
 - Real-time preview
+- Generate to save the current content and layout before download
 - Export high-resolution PNG images
+- Mobile Edit / Preview tabs and a compact scrolling toolbar
 - English / Chinese interface
 
 ---
@@ -92,9 +95,11 @@ in any modern browser.
 
 3. Edit your text.
 
-4. Click **Generate**.
+4. Click **Generate** to save the current content and layout.
 
 5. Export your long image.
+
+The canvas uses automatic height by default so the complete article is exported. Fixed height is available in the layout settings; a crop line appears when content exceeds that height.
 
 ---
 
@@ -104,7 +109,6 @@ in any modern browser.
 - CSS3
 - Vanilla JavaScript
 - html2canvas
-- PDF.js
 - Mammoth.js
 
 ---
@@ -132,7 +136,6 @@ Long-Image-Generator-pro/
 - Support tables
 - More built-in templates
 - Dark mode
-- Better mobile support
 
 ---
 
