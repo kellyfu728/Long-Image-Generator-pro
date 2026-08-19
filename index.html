@@ -501,10 +501,10 @@
                 </label>
             </div>
             <div class="toolbar-group">
-                <button class="btn btn-icon tooltip" data-tip-zh="左对齐" data-tip-en="Align Left" onpointerdown="event.preventDefault(); execCmd('justifyLeft')">⬅</button>
-                <button class="btn btn-icon tooltip" data-tip-zh="居中" data-tip-en="Center" onpointerdown="event.preventDefault(); execCmd('justifyCenter')">↔</button>
-                <button class="btn btn-icon tooltip" data-tip-zh="右对齐" data-tip-en="Align Right" onpointerdown="event.preventDefault(); execCmd('justifyRight')">➡</button>
-                <button class="btn btn-icon tooltip" data-tip-zh="两端对齐" data-tip-en="Justify" onpointerdown="event.preventDefault(); execCmd('justifyFull')">☰</button>
+                <button type="button" class="btn btn-icon tooltip" data-tip-zh="左对齐" data-tip-en="Align Left" onmousedown="execCmd('justifyLeft'); return false;">⬅</button>
+                <button type="button" class="btn btn-icon tooltip" data-tip-zh="居中" data-tip-en="Center" onmousedown="execCmd('justifyCenter'); return false;">↔</button>
+                <button type="button" class="btn btn-icon tooltip" data-tip-zh="右对齐" data-tip-en="Align Right" onmousedown="execCmd('justifyRight'); return false;">➡</button>
+                <button type="button" class="btn btn-icon tooltip" data-tip-zh="两端对齐" data-tip-en="Justify" onmousedown="execCmd('justifyFull'); return false;">☰</button>
                 <span style="color:#94a3b8;font-size:12px;margin-left:4px;" class="lang-zh">对齐</span>
                 <span style="color:#94a3b8;font-size:12px;margin-left:4px;" class="lang-en">Align</span>
             </div>
@@ -842,15 +842,16 @@
             }
 
             // ★★★★★ 核心修复：手动对齐（支持带格式的英文） ★★★★★
-            function alignSelection(alignment) {
-                const sel = window.getSelection();
-                if (!sel || !sel.rangeCount) {
+            function alignSelection(alignment, preservedRange) {
+                const selection = window.getSelection();
+                const range = preservedRange ||
+                    (selection && selection.rangeCount ? selection.getRangeAt(0).cloneRange() : null);
+                if (!range) {
                     const lang = htmlRoot.dataset.lang;
                     showMessage(lang === 'zh' ? '⚠️ 请先把光标放在要调整的行内！' : '⚠️ Place the cursor in the line to align first!', 'error');
                     return false;
                 }
 
-                const range = sel.getRangeAt(0);
                 if (!richEditor.contains(range.commonAncestorContainer)) {
                     return false;
                 }
@@ -920,7 +921,9 @@
                         'justifyRight': 'right',
                         'justifyFull': 'justify'
                     };
-                    const success = alignSelection(alignMap[command]);
+                    // 直接使用 mousedown 时克隆的 Range 计算段落，不再依赖
+                    // focus 之后浏览器能否重建含 emoji/VS16 的可见选区。
+                    const success = alignSelection(alignMap[command], savedRange);
                     if (success) {
                         syncPreview();
                         markDirty();
