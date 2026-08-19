@@ -501,10 +501,10 @@
                 </label>
             </div>
             <div class="toolbar-group">
-                <button class="btn btn-icon tooltip" data-tip-zh="左对齐" data-tip-en="Align Left" onclick="execCmd('justifyLeft')">⬅</button>
-                <button class="btn btn-icon tooltip" data-tip-zh="居中" data-tip-en="Center" onclick="execCmd('justifyCenter')">↔</button>
-                <button class="btn btn-icon tooltip" data-tip-zh="右对齐" data-tip-en="Align Right" onclick="execCmd('justifyRight')">➡</button>
-                <button class="btn btn-icon tooltip" data-tip-zh="两端对齐" data-tip-en="Justify" onclick="execCmd('justifyFull')">☰</button>
+                <button class="btn btn-icon tooltip" data-tip-zh="左对齐" data-tip-en="Align Left" onpointerdown="event.preventDefault(); execCmd('justifyLeft')">⬅</button>
+                <button class="btn btn-icon tooltip" data-tip-zh="居中" data-tip-en="Center" onpointerdown="event.preventDefault(); execCmd('justifyCenter')">↔</button>
+                <button class="btn btn-icon tooltip" data-tip-zh="右对齐" data-tip-en="Align Right" onpointerdown="event.preventDefault(); execCmd('justifyRight')">➡</button>
+                <button class="btn btn-icon tooltip" data-tip-zh="两端对齐" data-tip-en="Justify" onpointerdown="event.preventDefault(); execCmd('justifyFull')">☰</button>
                 <span style="color:#94a3b8;font-size:12px;margin-left:4px;" class="lang-zh">对齐</span>
                 <span style="color:#94a3b8;font-size:12px;margin-left:4px;" class="lang-en">Align</span>
             </div>
@@ -870,8 +870,14 @@
             window.execCmd = function(command, value) {
                 // mousedown 可能已把焦点移出编辑器，因此恢复持续保存的选区，
                 // 而不是在 onclick 时才尝试保存。
-                const savedRange = (pendingToolbarRange || lastEditorRange) &&
-                    (pendingToolbarRange || lastEditorRange).cloneRange();
+                const liveSelection = window.getSelection();
+                const liveRange = liveSelection && liveSelection.rangeCount &&
+                    richEditor.contains(liveSelection.getRangeAt(0).commonAncestorContainer)
+                    ? liveSelection.getRangeAt(0)
+                    : null;
+                // 对齐命令现在于 pointerdown 执行，优先使用尚未丢失的实时选区。
+                const sourceRange = liveRange || pendingToolbarRange || lastEditorRange;
+                const savedRange = sourceRange && sourceRange.cloneRange();
                 pendingToolbarRange = null;
                 richEditor.focus();
                 if (savedRange) {
