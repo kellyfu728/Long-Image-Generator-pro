@@ -243,6 +243,12 @@
         }
         #richEditor p { margin: 0 0 0.5em 0; }
         #richEditor * { max-width: 100%; word-break: break-word; }
+        .emoji-glyph {
+            font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+            font-style: normal;
+            font-weight: normal;
+            font-variant-emoji: emoji;
+        }
         #richEditor ul, #poster ul {
             list-style-type: disc;
             padding-left: 28px;
@@ -610,11 +616,11 @@
                 <input type="number" id="heightInput" value="1200" min="300" max="10000" hidden aria-label="固定高度">
             </label>
             <label><span class="lang-zh">🔤 字体</span><span class="lang-en">🔤 Font</span> <select id="fontSelect">
-                    <option value="'Times New Roman', serif">Times</option>
-                    <option value="'Georgia', serif">Georgia</option>
-                    <option value="'Helvetica Neue', sans-serif" selected>Helvetica</option>
-                    <option value="'Courier New', monospace">Courier</option>
-                    <option value="'Arial', sans-serif">Arial</option>
+                    <option value="'Times New Roman', 'Songti SC', SimSun, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', serif">Times</option>
+                    <option value="Georgia, 'Songti SC', SimSun, 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', serif">Georgia</option>
+                    <option value="'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif" selected>Helvetica</option>
+                    <option value="'Courier New', 'Sarasa Mono SC', 'Microsoft YaHei', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', monospace">Courier</option>
+                    <option value="Arial, 'PingFang SC', 'Microsoft YaHei', 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif">Arial</option>
                 </select></label>
             <label><span class="lang-zh">📐 字号</span><span class="lang-en">📐 Size</span> <input type="number" id="fontSizeInput" value="18" min="10" max="40"></label>
             <label><span class="lang-zh">↕️ 行距</span><span class="lang-en">↕️ Line H.</span> <input type="number" id="lineHeightInput" value="1.8" min="1.2" max="3.0" step="0.1"></label>
@@ -1239,6 +1245,59 @@
                 });
             });
 
+            // 把一个完整 emoji grapheme 放入专用 fallback span。只改 DOM 包装，
+            // 不会替换或规范化任何 Unicode 字符（包括 VS15/VS16 和 ZWJ）。
+            function wrapEmojiGlyphs(root) {
+                const emojiPattern = /\p{Extended_Pictographic}(?:[\uFE0E\uFE0F])?(?:\u200D\p{Extended_Pictographic}(?:[\uFE0E\uFE0F])?)*/gu;
+                const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+                const textNodes = [];
+                while (walker.nextNode()) {
+                    if (!walker.currentNode.parentElement.closest('.emoji-glyph')) {
+                        textNodes.push(walker.currentNode);
+                    }
+                }
+
+                textNodes.forEach(textNode => {
+                    const text = textNode.nodeValue;
+                    emojiPattern.lastIndex = 0;
+                    if (!emojiPattern.test(text)) return;
+                    emojiPattern.lastIndex = 0;
+
+                    const fragment = document.createDocumentFragment();
+                    let offset = 0;
+                    for (const match of text.matchAll(emojiPattern)) {
+                        if (match.index > offset) {
+                            fragment.appendChild(document.createTextNode(text.slice(offset, match.index)));
+                        }
+                        const emoji = document.createElement('span');
+                        emoji.className = 'emoji-glyph';
+                        emoji.textContent = match[0];
+                        fragment.appendChild(emoji);
+                        offset = match.index + match[0].length;
+                    }
+                    if (offset < text.length) {
+                        fragment.appendChild(document.createTextNode(text.slice(offset)));
+                    }
+                    textNode.replaceWith(fragment);
+                });
+            }
+
+            function createTxtParagraph(line) {
+                const paragraph = document.createElement('p');
+                const boldPattern = /\*\*([^*\r\n]+)\*\*/g;
+                let offset = 0;
+                for (const match of line.matchAll(boldPattern)) {
+                    paragraph.appendChild(document.createTextNode(line.slice(offset, match.index)));
+                    const strong = document.createElement('strong');
+                    strong.textContent = match[1];
+                    paragraph.appendChild(strong);
+                    offset = match.index + match[0].length;
+                }
+                paragraph.appendChild(document.createTextNode(line.slice(offset)));
+                wrapEmojiGlyphs(paragraph);
+                return paragraph;
+            }
+
             // ========== 文件导入 ==========
             fileUpload.addEventListener('change', function(e) {
                 const file = e.target.files[0];
@@ -1249,7 +1308,7 @@
                     const reader = new FileReader();
                     reader.onload = function(ev) {
                         const lines = ev.target.result.split('\n').filter(l => l.trim() !== '');
-                        richEditor.innerHTML = lines.map(l => `<p>${l}</p>`).join('');
+                        richEditor.replaceChildren(...lines.map(createTxtParagraph));
                         syncPreview();
                         markDirty();
                     };
@@ -1261,6 +1320,7 @@
                             mammoth.convertToHtml({ arrayBuffer: ev.target.result })
                                 .then(result => {
                                     richEditor.innerHTML = result.value;
+                                    wrapEmojiGlyphs(richEditor);
                                     syncPreview();
                                     markDirty();
                                 })
