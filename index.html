@@ -741,6 +741,39 @@
             let currentBgColor = '#ffffff';
             let generatedSnapshot = null;
             let hasUnappliedChanges = false;
+            let lastEditorRange = null;
+
+            const editorBlockSelector = 'p, li, h1, h2, h3, h4, h5, h6, blockquote, div';
+
+            function editorBlockForNode(node) {
+                if (!node) return null;
+                const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+                const block = element && element.closest(editorBlockSelector);
+                return block && block !== richEditor && richEditor.contains(block) ? block : null;
+            }
+
+            function rememberEditorSelection() {
+                const selection = window.getSelection();
+                if (!selection || !selection.rangeCount) return;
+                const range = selection.getRangeAt(0);
+                if (richEditor.contains(range.commonAncestorContainer)) {
+                    lastEditorRange = range.cloneRange();
+                }
+            }
+
+            function restoreEditorSelection() {
+                if (!lastEditorRange) return false;
+                const selection = window.getSelection();
+                if (!selection) return false;
+                try {
+                    selection.removeAllRanges();
+                    selection.addRange(lastEditorRange.cloneRange());
+                    return true;
+                } catch (e) {
+                    lastEditorRange = null;
+                    return false;
+                }
+            }
 
             function onboardingStorageKey(lang) {
                 return lang === 'en'
@@ -781,25 +814,19 @@
                     return false;
                 }
 
-                const blockSelector = 'p, li, h1, h2, h3, h4, h5, h6, blockquote, div';
-                const closestBlock = node => {
-                    const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
-                    const block = element && element.closest(blockSelector);
-                    return block && block !== richEditor && richEditor.contains(block) ? block : null;
-                };
                 const blocks = [];
                 const addBlock = block => {
                     if (block && !blocks.includes(block)) blocks.push(block);
                 };
 
-                addBlock(closestBlock(range.startContainer));
-                addBlock(closestBlock(range.endContainer));
+                addBlock(editorBlockForNode(range.startContainer));
+                addBlock(editorBlockForNode(range.endContainer));
 
                 // 选区跨越多行时，对每个段落分别设置对齐。这也能处理 DOCX
                 // 导入后由 strong/span 拆分的“emoji + 加粗标题”。
                 if (!range.collapsed) {
-                    richEditor.querySelectorAll(blockSelector).forEach(block => {
-                        if (block === richEditor || block.querySelector(blockSelector)) return;
+                    richEditor.querySelectorAll(editorBlockSelector).forEach(block => {
+                        if (block === richEditor || block.querySelector(editorBlockSelector)) return;
                         try {
                             if (range.intersectsNode(block)) addBlock(block);
                         } catch (e) {
@@ -820,7 +847,7 @@
                     document.execCommand('formatBlock', false, '<p>');
                     const newSelection = window.getSelection();
                     if (newSelection && newSelection.rangeCount) {
-                        const block = closestBlock(newSelection.getRangeAt(0).startContainer);
+                        const block = editorBlockForNode(newSelection.getRangeAt(0).startContainer);
                         if (block) {
                             block.style.textAlign = alignment;
                             return true;
@@ -835,16 +862,13 @@
 
             // ========== execCmd ==========
             window.execCmd = function(command, value) {
-                // 点击工具栏后某些浏览器会丢失 contenteditable 选区，先保存再恢复。
-                const currentSelection = window.getSelection();
-                const savedRange = currentSelection && currentSelection.rangeCount &&
-                    richEditor.contains(currentSelection.getRangeAt(0).commonAncestorContainer)
-                    ? currentSelection.getRangeAt(0).cloneRange()
-                    : null;
+                // mousedown 可能已把焦点移出编辑器，因此恢复持续保存的选区，
+                // 而不是在 onclick 时才尝试保存。
+                const savedRange = lastEditorRange && lastEditorRange.cloneRange();
                 richEditor.focus();
                 if (savedRange) {
-                    currentSelection.removeAllRanges();
-                    currentSelection.addRange(savedRange);
+                    lastEditorRange = savedRange;
+                    restoreEditorSelection();
                 }
                 
                 // 对齐命令使用手动对齐
@@ -1063,6 +1087,53 @@
             }
 
             // ========== 事件监听 ==========
+            document.addEventListener('selectionchange', rememberEditorSelection);
+
+            // 阻止工具栏按钮在 click 前抢走 contenteditable 的光标/选区。
+            document.querySelectorAll('.toolbar button').forEach(button => {
+                button.addEventListener('mousedown', event => event.preventDefault());
+            });
+
+            richEditor.addEventListener('keydown', function(event) {
+                if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
+
+                const selection = window.getSelection();
+                if (!selection || !selection.rangeCount || !selection.isCollapsed) return;
+                const range = selection.getRangeAt(0);
+                const block = editorBlockForNode(range.startContainer);
+                if (!block) return;
+
+                const isHeading = /^H[1-6]$/.test(block.tagName);
+                const containsEmoji = /\p{Extended_Pictographic}/u.test(block.textContent || '');
+                const formattedText = block.querySelector('strong, b');
+
+                // Mammoth 常把 Word 里的“emoji + 粗体标题”转成 h1/strong 嵌套。
+                // 浏览器默认 Enter 会复制这个结构，导致后续行也无法正常排版。
+                if (!containsEmoji || (!isHeading && !formattedText)) return;
+
+                event.preventDefault();
+                const tailRange = range.cloneRange();
+                tailRange.setEnd(block, block.childNodes.length);
+                const trailingText = tailRange.extractContents().textContent;
+
+                const nextParagraph = document.createElement('p');
+                if (trailingText) {
+                    nextParagraph.textContent = trailingText;
+                } else {
+                    nextParagraph.appendChild(document.createElement('br'));
+                }
+                block.insertAdjacentElement('afterend', nextParagraph);
+
+                const newRange = document.createRange();
+                newRange.setStart(nextParagraph, 0);
+                newRange.collapse(true);
+                selection.removeAllRanges();
+                selection.addRange(newRange);
+                rememberEditorSelection();
+                syncPreview();
+                markDirty();
+            });
+
             richEditor.addEventListener('input', function() {
                 this.dataset.userEdited = 'true';
                 syncPreview();
