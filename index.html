@@ -770,40 +770,62 @@
             // ★★★★★ 核心修复：手动对齐（支持带格式的英文） ★★★★★
             function alignSelection(alignment) {
                 const sel = window.getSelection();
-                if (!sel || sel.isCollapsed || sel.toString().trim() === '') {
+                if (!sel || !sel.rangeCount) {
                     const lang = htmlRoot.dataset.lang;
-                    showMessage(lang === 'zh' ? '⚠️ 请先选中要调整的文字！' : '⚠️ Please select text first!', 'error');
+                    showMessage(lang === 'zh' ? '⚠️ 请先把光标放在要调整的行内！' : '⚠️ Place the cursor in the line to align first!', 'error');
                     return false;
                 }
-                
+
                 const range = sel.getRangeAt(0);
-                let container = range.commonAncestorContainer;
-                
-                // 如果 container 是文本节点，获取其父元素
-                if (container.nodeType === 3) {
-                    container = container.parentNode;
+                if (!richEditor.contains(range.commonAncestorContainer)) {
+                    return false;
                 }
-                
-                // 向上查找块级元素
-                let block = container;
-                const blockTags = ['P', 'DIV', 'LI', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'BLOCKQUOTE', 'UL', 'OL'];
-                
-                while (block && block !== document.body) {
-                    if (blockTags.includes(block.tagName)) {
-                        break;
-                    }
-                    block = block.parentNode;
+
+                const blockSelector = 'p, li, h1, h2, h3, h4, h5, h6, blockquote, div';
+                const closestBlock = node => {
+                    const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+                    const block = element && element.closest(blockSelector);
+                    return block && block !== richEditor && richEditor.contains(block) ? block : null;
+                };
+                const blocks = [];
+                const addBlock = block => {
+                    if (block && !blocks.includes(block)) blocks.push(block);
+                };
+
+                addBlock(closestBlock(range.startContainer));
+                addBlock(closestBlock(range.endContainer));
+
+                // 选区跨越多行时，对每个段落分别设置对齐。这也能处理 DOCX
+                // 导入后由 strong/span 拆分的“emoji + 加粗标题”。
+                if (!range.collapsed) {
+                    richEditor.querySelectorAll(blockSelector).forEach(block => {
+                        if (block === richEditor || block.querySelector(blockSelector)) return;
+                        try {
+                            if (range.intersectsNode(block)) addBlock(block);
+                        } catch (e) {
+                            // 某些旧浏览器不支持 intersectsNode，起止块仍可正常处理。
+                        }
+                    });
                 }
-                
-                if (block && block !== document.body && blockTags.includes(block.tagName)) {
-                    // 直接设置块级元素的 text-align
-                    block.style.textAlign = alignment;
+
+                if (blocks.length) {
+                    blocks.forEach(block => {
+                        block.style.textAlign = alignment;
+                    });
                     return true;
                 }
-                
-                // 如果找不到块级元素，尝试用 execCommand 作为后备
+
+                // 纯文本直接位于编辑器根节点时，先转成段落。
                 try {
                     document.execCommand('formatBlock', false, '<p>');
+                    const newSelection = window.getSelection();
+                    if (newSelection && newSelection.rangeCount) {
+                        const block = closestBlock(newSelection.getRangeAt(0).startContainer);
+                        if (block) {
+                            block.style.textAlign = alignment;
+                            return true;
+                        }
+                    }
                     document.execCommand('justify' + alignment.charAt(0).toUpperCase() + alignment.slice(1), false, null);
                     return true;
                 } catch (e) {
@@ -813,7 +835,17 @@
 
             // ========== execCmd ==========
             window.execCmd = function(command, value) {
+                // 点击工具栏后某些浏览器会丢失 contenteditable 选区，先保存再恢复。
+                const currentSelection = window.getSelection();
+                const savedRange = currentSelection && currentSelection.rangeCount &&
+                    richEditor.contains(currentSelection.getRangeAt(0).commonAncestorContainer)
+                    ? currentSelection.getRangeAt(0).cloneRange()
+                    : null;
                 richEditor.focus();
+                if (savedRange) {
+                    currentSelection.removeAllRanges();
+                    currentSelection.addRange(savedRange);
+                }
                 
                 // 对齐命令使用手动对齐
                 if (command === 'justifyLeft' || command === 'justifyCenter' || 
