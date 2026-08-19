@@ -742,6 +742,7 @@
             let generatedSnapshot = null;
             let hasUnappliedChanges = false;
             let lastEditorRange = null;
+            let pendingToolbarRange = null;
 
             const editorBlockSelector = 'p, li, h1, h2, h3, h4, h5, h6, blockquote, div';
 
@@ -837,7 +838,12 @@
 
                 if (blocks.length) {
                     blocks.forEach(block => {
-                        block.style.textAlign = alignment;
+                        // DOCX 可能携带内联对齐样式，显式覆盖才能保证立即生效。
+                        block.style.setProperty('text-align', alignment, 'important');
+                        block.querySelectorAll('[style*="text-align"], [align]').forEach(child => {
+                            child.style.setProperty('text-align', alignment, 'important');
+                            child.removeAttribute('align');
+                        });
                     });
                     return true;
                 }
@@ -864,7 +870,9 @@
             window.execCmd = function(command, value) {
                 // mousedown 可能已把焦点移出编辑器，因此恢复持续保存的选区，
                 // 而不是在 onclick 时才尝试保存。
-                const savedRange = lastEditorRange && lastEditorRange.cloneRange();
+                const savedRange = (pendingToolbarRange || lastEditorRange) &&
+                    (pendingToolbarRange || lastEditorRange).cloneRange();
+                pendingToolbarRange = null;
                 richEditor.focus();
                 if (savedRange) {
                     lastEditorRange = savedRange;
@@ -1091,7 +1099,18 @@
 
             // 阻止工具栏按钮在 click 前抢走 contenteditable 的光标/选区。
             document.querySelectorAll('.toolbar button').forEach(button => {
-                button.addEventListener('mousedown', event => event.preventDefault());
+                button.addEventListener('mousedown', event => {
+                    // 必须在浏览器执行按钮默认聚焦之前冻结选区。
+                    // selectionchange 在 mousedown 和 click 之间可能已把 lastEditorRange 覆盖。
+                    const selection = window.getSelection();
+                    if (selection && selection.rangeCount) {
+                        const range = selection.getRangeAt(0);
+                        if (richEditor.contains(range.commonAncestorContainer)) {
+                            pendingToolbarRange = range.cloneRange();
+                        }
+                    }
+                    event.preventDefault();
+                });
             });
 
             richEditor.addEventListener('keydown', function(event) {
@@ -1114,12 +1133,19 @@
                 event.preventDefault();
                 const tailRange = range.cloneRange();
                 tailRange.setEnd(block, block.childNodes.length);
-                const trailingText = tailRange.extractContents().textContent;
+                const trailingContent = tailRange.extractContents();
+                const hasTrailingContent = trailingContent.textContent.length > 0 ||
+                    trailingContent.querySelector('img, br');
 
-                const nextParagraph = document.createElement('p');
-                if (trailingText) {
-                    nextParagraph.textContent = trailingText;
+                let nextParagraph;
+                if (hasTrailingContent) {
+                    // 在 emoji 与标题文字之间断行时，保留 Mammoth 生成的 h1-h6、
+                    // strong/b、span 字号以及其他内联样式。
+                    nextParagraph = block.cloneNode(false);
+                    nextParagraph.appendChild(trailingContent);
                 } else {
+                    // 标题末尾回车应开始普通段落，不让标题样式无限传播。
+                    nextParagraph = document.createElement('p');
                     nextParagraph.appendChild(document.createElement('br'));
                 }
                 block.insertAdjacentElement('afterend', nextParagraph);
