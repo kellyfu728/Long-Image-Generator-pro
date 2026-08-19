@@ -243,12 +243,6 @@
         }
         #richEditor p { margin: 0 0 0.5em 0; }
         #richEditor * { max-width: 100%; word-break: break-word; }
-        .emoji-glyph {
-            font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
-            font-style: normal;
-            font-weight: normal;
-            font-variant-emoji: emoji;
-        }
         #richEditor ul, #poster ul {
             list-style-type: disc;
             padding-left: 28px;
@@ -750,13 +744,53 @@
             let lastEditorRange = null;
             let pendingToolbarRange = null;
 
-            const editorBlockSelector = 'p, li, h1, h2, h3, h4, h5, h6, blockquote, div';
-
             function editorBlockForNode(node) {
                 if (!node) return null;
-                const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
-                const block = element && element.closest(editorBlockSelector);
-                return block && block !== richEditor && richEditor.contains(block) ? block : null;
+                let element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement;
+                if (!element || element === richEditor || !richEditor.contains(element)) return null;
+
+                const listItem = element.closest('li');
+                if (listItem && richEditor.contains(listItem)) return listItem;
+
+                // 段落的定义只取编辑器的顶层块。strong/span/a 等 Word run
+                // 无论如何嵌套，都不能变成独立段落。
+                while (element && element.parentElement !== richEditor) {
+                    element = element.parentElement;
+                }
+                return element && element !== richEditor ? element : null;
+            }
+
+            function editorParagraphs() {
+                const paragraphs = [];
+                Array.from(richEditor.children).forEach(child => {
+                    if (child.matches('ul, ol')) {
+                        paragraphs.push(...child.querySelectorAll('li'));
+                    } else {
+                        paragraphs.push(child);
+                    }
+                });
+                return paragraphs;
+            }
+
+            function normalizeEditorParagraphs() {
+                // Mammoth 偶尔会产生顶层文本节点。将它们包成 p，但绝不改写
+                // 文本内容，因此 emoji、全角符号和 Unicode 变体选择符都保持原样。
+                Array.from(richEditor.childNodes).forEach(node => {
+                    if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'BR') {
+                        const paragraph = document.createElement('p');
+                        node.replaceWith(paragraph);
+                        paragraph.appendChild(node);
+                        return;
+                    }
+                    if (node.nodeType !== Node.TEXT_NODE) return;
+                    if (!node.nodeValue.trim()) {
+                        node.remove();
+                        return;
+                    }
+                    const paragraph = document.createElement('p');
+                    node.replaceWith(paragraph);
+                    paragraph.appendChild(node);
+                });
             }
 
             function rememberEditorSelection() {
@@ -821,35 +855,21 @@
                     return false;
                 }
 
-                const blocks = [];
-                const addBlock = block => {
-                    if (block && !blocks.includes(block)) blocks.push(block);
-                };
-
-                addBlock(editorBlockForNode(range.startContainer));
-                addBlock(editorBlockForNode(range.endContainer));
-
-                // 选区跨越多行时，对每个段落分别设置对齐。这也能处理 DOCX
-                // 导入后由 strong/span 拆分的“emoji + 加粗标题”。
-                if (!range.collapsed) {
-                    richEditor.querySelectorAll(editorBlockSelector).forEach(block => {
-                        if (block === richEditor || block.querySelector(editorBlockSelector)) return;
-                        try {
-                            if (range.intersectsNode(block)) addBlock(block);
-                        } catch (e) {
-                            // 某些旧浏览器不支持 intersectsNode，起止块仍可正常处理。
-                        }
-                    });
-                }
+                const blocks = editorParagraphs().filter(block => {
+                    if (range.collapsed) return block === editorBlockForNode(range.startContainer);
+                    try {
+                        return range.intersectsNode(block);
+                    } catch (e) {
+                        return block === editorBlockForNode(range.startContainer) ||
+                            block === editorBlockForNode(range.endContainer);
+                    }
+                });
 
                 if (blocks.length) {
                     blocks.forEach(block => {
-                        // DOCX 可能携带内联对齐样式，显式覆盖才能保证立即生效。
+                        // 对齐状态只存在独立段落上，不写入 strong/span 等文字 run。
                         block.style.setProperty('text-align', alignment, 'important');
-                        block.querySelectorAll('[style*="text-align"], [align]').forEach(child => {
-                            child.style.setProperty('text-align', alignment, 'important');
-                            child.removeAttribute('align');
-                        });
+                        block.removeAttribute('align');
                     });
                     return true;
                 }
@@ -1125,45 +1145,41 @@
                 });
             });
 
-            richEditor.addEventListener('keydown', function(event) {
-                if (event.key !== 'Enter' || event.shiftKey || event.ctrlKey || event.altKey || event.metaKey) return;
-
+            richEditor.addEventListener('beforeinput', function(event) {
+                if (event.inputType !== 'insertParagraph') return;
                 const selection = window.getSelection();
-                if (!selection || !selection.rangeCount || !selection.isCollapsed) return;
-                const range = selection.getRangeAt(0);
+                if (!selection || !selection.rangeCount) return;
+                const range = selection.getRangeAt(0).cloneRange();
                 const block = editorBlockForNode(range.startContainer);
-                if (!block) return;
-
-                const isHeading = /^H[1-6]$/.test(block.tagName);
-                const containsEmoji = /\p{Extended_Pictographic}/u.test(block.textContent || '');
-                const formattedText = block.querySelector('strong, b');
-
-                // Mammoth 常把 Word 里的“emoji + 粗体标题”转成 h1/strong 嵌套。
-                // 浏览器默认 Enter 会复制这个结构，导致后续行也无法正常排版。
-                if (!containsEmoji || (!isHeading && !formattedText)) return;
+                // 列表的 Enter/Backspace 语义更复杂，保留浏览器原生行为。
+                if (!block || block.matches('li') || block.parentElement !== richEditor) return;
 
                 event.preventDefault();
+                if (!range.collapsed) {
+                    range.deleteContents();
+                    range.collapse(true);
+                }
+
                 const tailRange = range.cloneRange();
                 tailRange.setEnd(block, block.childNodes.length);
                 const trailingContent = tailRange.extractContents();
-                const hasTrailingContent = trailingContent.textContent.length > 0 ||
-                    trailingContent.querySelector('img, br');
 
-                let nextParagraph;
-                if (hasTrailingContent) {
-                    // 在 emoji 与标题文字之间断行时，保留 Mammoth 生成的 h1-h6、
-                    // strong/b、span 字号以及其他内联样式。
-                    nextParagraph = block.cloneNode(false);
-                    nextParagraph.appendChild(trailingContent);
-                } else {
-                    // 标题末尾回车应开始普通段落，不让标题样式无限传播。
-                    nextParagraph = document.createElement('p');
-                    nextParagraph.appendChild(document.createElement('br'));
+                // 通用拆段：新块拷贝段落级格式，尾部 fragment 保留所有
+                // strong/span/a 等行内结构和原始 Unicode 文本节点。
+                const nextBlock = block.cloneNode(false);
+                nextBlock.removeAttribute('id');
+                nextBlock.appendChild(trailingContent);
+
+                if (!block.textContent && !block.querySelector('img, br')) {
+                    block.appendChild(document.createElement('br'));
                 }
-                block.insertAdjacentElement('afterend', nextParagraph);
+                if (!nextBlock.textContent && !nextBlock.querySelector('img, br')) {
+                    nextBlock.appendChild(document.createElement('br'));
+                }
+                block.insertAdjacentElement('afterend', nextBlock);
 
                 const newRange = document.createRange();
-                newRange.setStart(nextParagraph, 0);
+                newRange.setStart(nextBlock, 0);
                 newRange.collapse(true);
                 selection.removeAllRanges();
                 selection.addRange(newRange);
@@ -1245,43 +1261,6 @@
                 });
             });
 
-            // 把一个完整 emoji grapheme 放入专用 fallback span。只改 DOM 包装，
-            // 不会替换或规范化任何 Unicode 字符（包括 VS15/VS16 和 ZWJ）。
-            function wrapEmojiGlyphs(root) {
-                const emojiPattern = /\p{Extended_Pictographic}(?:[\uFE0E\uFE0F])?(?:\u200D\p{Extended_Pictographic}(?:[\uFE0E\uFE0F])?)*/gu;
-                const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-                const textNodes = [];
-                while (walker.nextNode()) {
-                    if (!walker.currentNode.parentElement.closest('.emoji-glyph')) {
-                        textNodes.push(walker.currentNode);
-                    }
-                }
-
-                textNodes.forEach(textNode => {
-                    const text = textNode.nodeValue;
-                    emojiPattern.lastIndex = 0;
-                    if (!emojiPattern.test(text)) return;
-                    emojiPattern.lastIndex = 0;
-
-                    const fragment = document.createDocumentFragment();
-                    let offset = 0;
-                    for (const match of text.matchAll(emojiPattern)) {
-                        if (match.index > offset) {
-                            fragment.appendChild(document.createTextNode(text.slice(offset, match.index)));
-                        }
-                        const emoji = document.createElement('span');
-                        emoji.className = 'emoji-glyph';
-                        emoji.textContent = match[0];
-                        fragment.appendChild(emoji);
-                        offset = match.index + match[0].length;
-                    }
-                    if (offset < text.length) {
-                        fragment.appendChild(document.createTextNode(text.slice(offset)));
-                    }
-                    textNode.replaceWith(fragment);
-                });
-            }
-
             function createTxtParagraph(line) {
                 const paragraph = document.createElement('p');
                 const boldPattern = /\*\*([^*\r\n]+)\*\*/g;
@@ -1294,7 +1273,6 @@
                     offset = match.index + match[0].length;
                 }
                 paragraph.appendChild(document.createTextNode(line.slice(offset)));
-                wrapEmojiGlyphs(paragraph);
                 return paragraph;
             }
 
@@ -1320,7 +1298,7 @@
                             mammoth.convertToHtml({ arrayBuffer: ev.target.result })
                                 .then(result => {
                                     richEditor.innerHTML = result.value;
-                                    wrapEmojiGlyphs(richEditor);
+                                    normalizeEditorParagraphs();
                                     syncPreview();
                                     markDirty();
                                 })
